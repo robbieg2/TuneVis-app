@@ -145,8 +145,9 @@ export function drawMultiRadarChart(series) {
 
     const svg = d3.select(container)
         .append("svg")
-        .attr("width", width)
-        .attr("height", height)
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("width", "100%")
+        .style("max-width", `${width}px`)
         .append("g")
         .attr("transform", `translate(${width / 2}, ${height / 2})`);
 
@@ -312,13 +313,16 @@ export function drawSimilarityBarChart(rows = []) {
     container.innerHTML = "";
 	
 	const safeRows = Array.isArray(rows) ? rows : [];
-    const width = Math.min(760, container.clientWidth || 760);
-    const height = 480;
-    const margin = { top: 20, right: 70, bottom: 40, left: 220 };
+    const isMobile = (container.clientWidth || window.innerWidth) < 600;
+    const width = container.clientWidth || (isMobile ? 380 : 760);
+    const height = isMobile ? 360 : 480;
+    const margin = { top: 20, right: isMobile ? 20 : 70, bottom: 40, left: isMobile ? 130 : 220 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
-    const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
+    const svg = d3.select(container).append("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("width", "100%");
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     const x = d3.scaleLinear().domain([0, 1]).range([0, innerW]);
@@ -341,7 +345,7 @@ export function drawSimilarityBarChart(rows = []) {
                 const name = r?.track?.name || id;
                 const artists = (r?.track?.artists || []).join(", ");
                 const label = `${name} — ${artists}`;
-                return label.length > 40 ? label.slice(0, 40) + "…" : label;
+                const maxLen = isMobile ? 20 : 40; return label.length > maxLen ? label.slice(0, maxLen) + "…" : label;
             })
         )
         .selectAll("text")
@@ -509,7 +513,9 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
         const seedX = getVal(seedFeatures, xKey);
         const seedY = getVal(seedFeatures, yKey);
 
-        const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
+        const svg = d3.select(container).append("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("width", "100%");
 
         const innerW = width - margin.left - margin.right;
         const innerH = height - margin.top - margin.bottom;

@@ -624,3 +624,120 @@ button {
 }
 
 	
+/* ── Home page tabs ─────────────────────────────────────────── */
+
+.home-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 36px 0 16px;
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 22px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tab-btn.active {
+  background: #1db954;
+  border-color: #1db954;
+  font-weight: 600;
+}
+
+.tab-panel {
+  min-height: 80px;
+}
+
+.tab-loading,
+.tab-empty {
+  opacity: 0.65;
+  font-size: 14px;
+  padding: 24px;
+}
+
+/* ── Mobile — general ───────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Allow carousels to scroll horizontally on touch */
+  .carousel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .carousel::-webkit-scrollbar { display: none; }
+
+  /* Narrower cards */
+  .track-result,
+  .rec-card {
+    width: 260px;
+  }
+
+  /* Search input full-width */
+  #search-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+  }
+
+  #search-input {
+    width: 100%;
+    max-width: 420px;
+    box-sizing: border-box;
+  }
+
+  /* Card padding */
+  .card {
+    padding: 10px 8px;
+  }
+
+  /* Charts: scale SVGs to container */
+  #sim-radar svg,
+  #sim-bar svg,
+  #sim-scatter svg {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Seed header already stacks at 700px; tighten embed */
+  .seed-embed {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  /* Smaller seed cover on very small screens */
+  .seed-cover {
+    width: 120px;
+    height: 120px;
+  }
+
+  /* Rec card embed full width */
+  #recommendations .rec-card iframe {
+    height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .carousel-wrapper {
+    width: 100%;
+  }
+
+  .scroll-btn {
+    display: none; /* On small phones, swipe is enough */
+  }
+
+  .home-tabs {
+    margin-top: 24px;
+  }
+}

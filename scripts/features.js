@@ -16,7 +16,7 @@ import {
 	drawSimilarityScatter
 } from "./features-charts.js";
 
-import { getSpotifyToken } from "./auth.js";
+import { getSpotifyToken, saveToRecent } from "./auth.js";
 
 const trackInfo = document.getElementById("track-info");
 const backBtn = document.getElementById("back-btn");
@@ -254,6 +254,7 @@ function renderRecommendations(items = [], { subtitle } = {}) {
         const card = document.createElement("div");
 		card.className = "rec-card";
 		card.dataset.trackId = id;
+		const trackMeta = r.track || null;
 		card.innerHTML = `
 			<iframe
 				src="https://open.spotify.com/embed/track/${id}"
@@ -262,7 +263,16 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 				frameborder="0"
 				allow="encrypted-media">
 			</iframe>
+			${trackMeta ? `<button class="features-btn analyse-rec-btn" style="margin-top:8px;width:100%;">Analyse this track</button>` : ""}
 		`;
+
+		if (trackMeta) {
+			card.querySelector(".analyse-rec-btn")?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				saveToRecent(trackMeta);
+				window.location.href = `features.html?track=${encodeURIComponent(JSON.stringify(trackMeta))}`;
+			});
+		}
 	
 		card.addEventListener("mouseenter", (e) => {
 			window.dispatchEvent(new CustomEvent("rec-hover", { detail: { trackId: id } }));
@@ -418,6 +428,15 @@ async function init() {
     }
 
     renderTrackHeader(track);
+
+    // Save to recently-viewed whenever a features page loads
+    saveToRecent({
+        id: track.id,
+        name: track.name,
+        artists: Array.isArray(track.artists) ? track.artists : [],
+        image: track.image || "",
+    });
+
 	tooltipEl();
 	attachSimilarityHelpPopover();
 
