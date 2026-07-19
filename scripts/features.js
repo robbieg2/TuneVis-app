@@ -559,15 +559,10 @@ async function init() {
 			return;
 		}
 		
-        // candidates is now [{id, match}] — Last.fm match score preserved
-        let candidates = await spotifyResolveManyTrackIds(token, similarPairs, { market, concurrency: 5 });
+        let candidateIds = await spotifyResolveManyTrackIds(token, similarPairs, { market, concurrency: 5 });
 
         // Remove the seed track from recommendations
-        candidates = candidates.filter(c => c.id !== track.id);
-
-        const candidateIds = candidates.map(c => c.id);
-        // Map from Spotify ID → Last.fm match score (0–1)
-        const matchMap = new Map(candidates.map(c => [c.id, c.match]));
+        candidateIds = candidateIds.filter(id => id !== track.id);
 
         if (!candidateIds.length) {
             renderRecommendations([], {
@@ -589,19 +584,12 @@ async function init() {
                 const f = recFeaturesMap.get(id);
                 if (!f) return null;
 
-                const audioSim    = similarityScore(seedFeatures, f);
-                const lastfmMatch = matchMap.get(id) ?? 0;
-                // Combined score: Last.fm listener-behaviour signal weighted above
-                // raw acoustic similarity — captures genre/context that features miss
-                const combinedScore = 0.4 * audioSim + 0.6 * lastfmMatch;
-
+                const score = similarityScore(seedFeatures, f);
                 const t = metaMap.get(id);
                 return {
                     id,
                     features: f,
-                    score: combinedScore,
-                    audioSimilarity: audioSim,
-                    lastfmMatch,
+                    score,
                     meta: t || null,
                     track: t
                         ? {
