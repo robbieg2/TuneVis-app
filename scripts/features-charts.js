@@ -304,6 +304,12 @@ export function drawMultiRadarChart(series) {
 			}
 		});
 	});
+
+	// Hint text
+	d3.select(container)
+		.append("p")
+		.attr("class", "chart-hint")
+		.text("Tip: Click a legend item to isolate that track on the chart");
 }
 
 // Bar chart showing similarity scores
@@ -313,16 +319,18 @@ export function drawSimilarityBarChart(rows = []) {
     container.innerHTML = "";
 	
 	const safeRows = Array.isArray(rows) ? rows : [];
-    const isMobile = (container.clientWidth || window.innerWidth) < 600;
-    const width = container.clientWidth || (isMobile ? 380 : 760);
-    const height = isMobile ? 360 : 480;
+    const isMobile = window.innerWidth < 700;
+    const width = isMobile
+        ? Math.max(340, window.innerWidth - 32)
+        : Math.min(760, container.clientWidth || 760);
+    const height = isMobile ? 380 : 480;
     const margin = { top: 20, right: isMobile ? 20 : 70, bottom: 40, left: isMobile ? 130 : 220 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
     const svg = d3.select(container).append("svg")
-        .attr("viewBox", `0 0 ${width} ${height}`)
-        .attr("width", "100%");
+        .attr("width", width)
+        .attr("height", height);
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     const x = d3.scaleLinear().domain([0, 1]).range([0, innerW]);
@@ -514,8 +522,8 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
         const seedY = getVal(seedFeatures, yKey);
 
         const svg = d3.select(container).append("svg")
-        .attr("viewBox", `0 0 ${width} ${height}`)
-        .attr("width", "100%");
+        .attr("width", width)
+        .attr("height", height);
 
         const innerW = width - margin.left - margin.right;
         const innerH = height - margin.top - margin.bottom;

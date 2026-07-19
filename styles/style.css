@@ -505,7 +505,7 @@ button {
 }
 
 #sim-bar {
-	overflow-x: hidden;
+	overflow-x: auto;
 }
 
 #sim-bar svg {
@@ -665,24 +665,52 @@ button {
   padding: 24px;
 }
 
-/* ── Mobile — general ───────────────────────────────────────── */
+/* Radar chart hint */
+.chart-hint {
+  font-size: 12px;
+  opacity: 0.65;
+  text-align: center;
+  margin: 8px 0 0;
+}
+
+/* ── Mobile — 768px and below ───────────────────────────────── */
 
 @media (max-width: 768px) {
-  /* Allow carousels to scroll horizontally on touch */
+  /* Carousels: touch-scrollable on mobile.
+     overflow: hidden is kept on desktop so the scroll-button UX works;
+     on mobile we replace it with auto so touch-swipe works instead. */
   .carousel {
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
   .carousel::-webkit-scrollbar { display: none; }
 
-  /* Narrower cards */
+  /* Narrower cards so multiple are partially visible (hints at scrollability) */
   .track-result,
   .rec-card {
-    width: 260px;
+    width: 270px;
   }
 
-  /* Search input full-width */
+  /* Bar chart card: allow horizontal scroll if chart is wider than screen */
+  #card-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Radar scales down via viewBox already; scatter uses clientWidth already.
+     Just ensure they don't overflow their cards. */
+  #sim-radar svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  #sim-scatter svg {
+    max-width: 100%;
+  }
+
+  /* Search layout */
   #search-section {
     display: flex;
     flex-direction: column;
@@ -692,7 +720,7 @@ button {
   }
 
   #search-input {
-    width: 100%;
+    width: calc(100% - 32px);
     max-width: 420px;
     box-sizing: border-box;
   }
@@ -702,39 +730,28 @@ button {
     padding: 10px 8px;
   }
 
-  /* Charts: scale SVGs to container */
-  #sim-radar svg,
-  #sim-bar svg,
-  #sim-scatter svg {
-    width: 100% !important;
-    height: auto !important;
-  }
-
-  /* Seed header already stacks at 700px; tighten embed */
+  /* Tighten seed header embed */
   .seed-embed {
     width: 100%;
     max-width: 320px;
   }
 
-  /* Smaller seed cover on very small screens */
   .seed-cover {
     width: 120px;
     height: 120px;
   }
-
-  /* Rec card embed full width */
-  #recommendations .rec-card iframe {
-    height: 120px;
-  }
 }
+
+/* ── Mobile — very small screens (< 480px) ──────────────────── */
 
 @media (max-width: 480px) {
   .carousel-wrapper {
     width: 100%;
   }
 
-  .scroll-btn {
-    display: none; /* On small phones, swipe is enough */
+  /* Hide scroll buttons on very small screens — touch swipe is sufficient */
+  .carousel-wrapper .scroll-btn {
+    display: none;
   }
 
   .home-tabs {
