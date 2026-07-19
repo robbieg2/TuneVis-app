@@ -110,6 +110,25 @@ header.logo .logo-title {
 	letter-spacing: 0.08em;
 }
 
+/* Compact logo variant for the search/home page */
+.logo-compact {
+	padding: 70px 20px 16px;
+}
+
+.logo-compact .logo-title {
+	font-size: clamp(36px, 6vw, 64px);
+}
+
+.logo-compact .logo-sub {
+	font-size: 15px;
+	margin-top: 8px;
+}
+
+.logo-compact .logo-bars {
+	width: min(560px, 88vw);
+	opacity: 0.6;
+}
+
 footer {
 	margin-top: auto;
 	opacity: 0.7;

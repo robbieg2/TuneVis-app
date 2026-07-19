@@ -219,15 +219,22 @@ export async function spotifyResolveManyTrackIds(token, pairs, { market = "GB", 
 			const p = list[idx];
             try {
                 const id = await spotifyResolveTrackId(token, { name: p?.name, artist: p?.artist, market });
-                if (id) results.push(id);
-            } catch {
-				
-            }
+                // Preserve the Last.fm match score alongside the resolved Spotify ID
+                if (id) results.push({ id, match: Number(p?.match ?? 0) });
+            } catch {}
         }
     }
 
     await Promise.all(Array.from({ length: Math.max(1, concurrency) }, () => worker()));
-	return uniq(results);
+
+    // Deduplicate by id, keeping the entry with the highest match score
+    const seen = new Map();
+    for (const r of results) {
+        if (!seen.has(r.id) || seen.get(r.id).match < r.match) {
+            seen.set(r.id, r);
+        }
+    }
+    return [...seen.values()];
 }
 
 // Similarity scoring

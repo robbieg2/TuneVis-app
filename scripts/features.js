@@ -331,12 +331,17 @@ function shuffleInPlace(arr) {
 }
 
 function weightedSample(pool, n) {
-	const items = pool.slice();
-	const k = 0.7;
-	
+	// Only draw from tracks scoring above a minimum threshold;
+	// fall back to full pool if there aren't enough qualifying tracks.
+	const MIN_SCORE = 0.38;
+	let eligible = pool.filter(r => (r.score || 0) >= MIN_SCORE);
+	if (eligible.length < n) eligible = pool.slice();
+	const items = eligible.slice();
+	const k = 1.4; // sharper weighting — high scorers much more likely than low scorers
+
 	const picked = [];
 	while (picked.length < n && items.length) {
-		const weights = items.map(r => Math.pow(Math.max(0, r.score || 0), k) + 0.01);
+		const weights = items.map(r => Math.pow(Math.max(0, r.score || 0), k) + 0.001);
 		const total = weights.reduce((a, b) => a + b, 0);
 		let roll = Math.random() * total;
 		
@@ -554,8 +559,15 @@ async function init() {
 			return;
 		}
 		
-        let candidateIds = await spotifyResolveManyTrackIds(token, similarPairs, { market, concurrency: 5 });	
-		candidateIds = normalizeSpotifyIds(candidateIds);
+        // candidates is now [{id, match}] — Last.fm match score preserved
+        let candidates = await spotifyResolveManyTrackIds(token, similarPairs, { market, concurrency: 5 });
+
+        // Remove the seed track from recommendations
+        candidates = candidates.filter(c => c.id !== track.id);
+
+        const candidateIds = candidates.map(c => c.id);
+        // Map from Spotify ID → Last.fm match score (0–1)
+        const matchMap = new Map(candidates.map(c => [c.id, c.match]));
 
         if (!candidateIds.length) {
             renderRecommendations([], {
@@ -577,11 +589,19 @@ async function init() {
                 const f = recFeaturesMap.get(id);
                 if (!f) return null;
 
+                const audioSim    = similarityScore(seedFeatures, f);
+                const lastfmMatch = matchMap.get(id) ?? 0;
+                // Combined score: Last.fm listener-behaviour signal weighted above
+                // raw acoustic similarity — captures genre/context that features miss
+                const combinedScore = 0.4 * audioSim + 0.6 * lastfmMatch;
+
                 const t = metaMap.get(id);
                 return {
                     id,
                     features: f,
-                    score: similarityScore(seedFeatures, f),
+                    score: combinedScore,
+                    audioSimilarity: audioSim,
+                    lastfmMatch,
                     meta: t || null,
                     track: t
                         ? {
