@@ -153,8 +153,7 @@ function hideVisualSections() {
     const simScatter = document.getElementById("sim-scatter");
 	const msgCard = document.getElementById("card-message");
     const noFeat = document.getElementById("no-features");
-	const tip = document.getElementById("chart-tip");
-	
+
     const radarCard = document.getElementById("card-radar");
     const barCard = document.getElementById("card-bar");
     const scatterCard = document.getElementById("card-scatter");
@@ -168,7 +167,6 @@ function hideVisualSections() {
     if (scatterCard) scatterCard.style.display = "none";
     if (barCard) barCard.style.display = "none";
     if (radarCard) radarCard.style.display = "none";
-	if (tip) tip.style.display = "none";
 
 	if (msgCard) msgCard.style.display = "flex";
     if (noFeat) {
@@ -183,15 +181,14 @@ function hideVisualSections() {
 }
 
 // Show visualisations when audio features are available
-function showVisualSections() {   
+function showVisualSections() {
     const radarCard = document.getElementById("card-radar");
     const barCard = document.getElementById("card-bar");
     const scatterCard = document.getElementById("card-scatter");
     const recsCard = document.getElementById("recs-card");
 	const msgCard = document.getElementById("card-message");
 	const noFeat = document.getElementById("no-features");
-	const tip = document.getElementById("chart-tip");
-	
+
     if (recsCard) recsCard.style.display = "block";
     if (scatterCard) scatterCard.style.display = "block";
     if (barCard) barCard.style.display = "block";
@@ -205,7 +202,6 @@ function showVisualSections() {
 		noFeat.style.display = "none";
 		noFeat.innerHTML = "";
 	}
-	if (tip) tip.style.display = "flex";
 }
 
 // Show recommendation embeds
@@ -401,6 +397,63 @@ function renderShuffleView() {
 // Main function
 async function init() {
     if (backBtn) backBtn.addEventListener("click", () => (window.location.href = "home.html"));
+
+    // Audio features help modal
+    const audioHelpBtn = document.getElementById("audio-help-btn");
+    if (audioHelpBtn) {
+        audioHelpBtn.addEventListener("click", () => {
+            let modal = document.getElementById("audio-help-modal");
+            if (!modal) {
+                modal = document.createElement("div");
+                modal.id = "audio-help-modal";
+                modal.className = "site-info-modal";
+                modal.innerHTML = `
+                    <div class="site-info-card audio-help-card">
+                        <button class="site-info-close" aria-label="Close">X</button>
+                        <h2>Audio Features Guide</h2>
+                        <p class="audio-help-intro">These features are measured on a 0–1 scale unless noted.</p>
+                        <div class="feature-grid">
+                            <div class="feature-item">
+                                <span class="feature-name">Danceability</span>
+                                <p>How suitable a track is for dancing. Based on tempo, rhythm stability, beat strength and regularity. Higher = more danceable.</p>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Energy</span>
+                                <p>Perceptual intensity and activity. High energy tracks feel fast, loud and noisy (e.g. death metal). Low energy feels calm (e.g. a Bach prelude).</p>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Valence</span>
+                                <p>Musical positivity. High valence sounds happy and cheerful. Low valence sounds sad, depressed or angry.</p>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Speechiness</span>
+                                <p>Presence of spoken words. Above 0.66 = likely spoken word only. 0.33–0.66 = music and speech mixed. Below 0.33 = mostly music.</p>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Acousticness</span>
+                                <p>Confidence that the track is acoustic (non-electronic). 1.0 = high confidence the track uses no amplification or effects.</p>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Instrumentalness</span>
+                                <p>Predicts whether a track contains no vocals. Values above 0.5 are treated as instrumental. The closer to 1.0, the more confident.</p>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-name">Tempo</span>
+                                <p>Estimated beats per minute (BPM). Unlike the other features, this is not a 0–1 scale — typical values range from ~60 to ~200 BPM.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.querySelector(".site-info-close")
+                    .addEventListener("click", () => modal.classList.remove("open"));
+                modal.addEventListener("click", (e) => {
+                    if (e.target === modal) modal.classList.remove("open");
+                });
+            }
+            modal.classList.add("open");
+        });
+    }
 
     let token;
     try {

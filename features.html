@@ -1,117 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TuneVis</title>
-
-    <!-- Libraries and stylesheets imports -->
-	<link rel="stylesheet" href="styles/style.css">
-
-	<script src="libs/d3.v7.min.js"></script>
-	<script src="libs/popper.v2.min.js"></script>
-	<script src="libs/tippy.v6.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TuneVis</title>
+  <link rel="stylesheet" href="styles/style.css">
+  <script src="libs/d3.v7.min.js"></script>
+  <script src="libs/popper.v2.min.js"></script>
+  <script src="libs/tippy.v6.min.js"></script>
 </head>
 <body>
-	<!-- Background -->
-	<div class="bg-layer">
-		<div class="bg-circle c1"></div>
-		<div class="bg-circle c2"></div>
-		<div class="bg-circle c3"></div>
-		<div class="bg-circle c4"></div>
-	</div>
+  <div class="bg-layer">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+    <div class="bg-circle c4"></div>
+  </div>
 
-	<header style="text-align:center; margin-top:20px;">
-		<button id="back-btn" style="position:absolute; left:20px; top:20px;">Back</button>
-	</header>
+  <header style="text-align:center; margin-top:20px;">
+    <button id="back-btn" style="position:absolute; left:20px; top:20px;">Back</button>
+    <button id="audio-help-btn" style="position:absolute; right:20px; top:20px;">? Audio Features</button>
+  </header>
 
-	<div id="track-info" style="margin-top:70px; text-align:center;"></div>
+  <div id="track-info" style="margin-top:70px; text-align:center;"></div>
 
-	<div id="chart-tip" class="chart-tip">
-		Tip: Click a bar or dot to open that songs page
-	</div>
+  <div class="grid-3">
 
-	<div class="grid-3">
-		<section id="card-radar" class="card">
-			<div class="card-head">
-				<div class="card-title">
-					<h3>Radar Comparison</h3>
-				</div>
-			</div>
-			<div id="sim-radar"></div>
-		</section>
+    <section id="card-radar" class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <h3>Radar Comparison</h3>
+        </div>
+      </div>
+      <div id="sim-radar"></div>
+    </section>
 
-		<section id="card-bar" class="card">
-			<div class="card-head">
-				<div class="card-title">
-					<h3 style="margin:0;">Similarity Score</h3>
-					<button id="sim-help" class="help-btn" type="button" aria-label="How similarity is calculated">?</button>
-				</div>
-			</div>
-			<div id="sim-bar"></div>
-		</section>
+    <section id="card-bar" class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <h3 style="margin:0;">Similarity Score</h3>
+          <button id="sim-help" class="help-btn" type="button" aria-label="How similarity is calculated">?</button>
+        </div>
+      </div>
+      <div id="sim-bar"></div>
+    </section>
 
-		<section id="card-scatter" class="card">
-			<div class="card-head">
-				<div class="card-title">
-					<h3>Scatter Comparison</h3>
-				</div>
+    <section id="card-scatter" class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <h3>Scatter Comparison</h3>
+        </div>
+        <div class="contols">
+          <label>X:
+            <select id="x-feature">
+              <option value="energy">Energy</option>
+              <option value="danceability">Danceability</option>
+              <option value="valence">Valence</option>
+              <option value="acousticness">Acousticness</option>
+              <option value="speechiness">Speechiness</option>
+              <option value="instrumentalness">Instrumentalness</option>
+              <option value="tempo">Tempo</option>
+            </select>
+          </label>
+          <label>Y:
+            <select id="y-feature">
+              <option value="valence">Valence</option>
+              <option value="energy">Energy</option>
+              <option value="danceability">Danceability</option>
+              <option value="acousticness">Acousticness</option>
+              <option value="speechiness">Speechiness</option>
+              <option value="instrumentalness">Instrumentalness</option>
+              <option value="tempo">Tempo</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div id="sim-scatter"></div>
+      <p class="chart-hint">Tip: Click a dot to open that track's audio features</p>
+    </section>
 
-				<div class="contols">
-					<label>X:
-						<select id="x-feature">
-							<option value="energy">Energy</option>
-							<option value="danceability">Danceability</option>
-							<option value="valence">Valence</option>
-							<option value="acousticness">Acousticness</option>
-							<option value="speechiness">Speechiness</option>
-							<option value="instrumentalness">Instrumentalness</option>
-							<option value="tempo">Tempo</option>
-						</select>
-					</label>
+    <section id="card-message" class="card centered-message" style="display:none;">
+      <div id="no-features"></div>
+    </section>
 
-					<label>Y:
-						<select id="y-feature">
-							<option value="valence">Valence</option>
-							<option value="energy">Energy</option>
-							<option value="danceability">Danceability</option>
-							<option value="acousticness">Acousticness</option>
-							<option value="speechiness">Speechiness</option>
-							<option value="instrumentalness">Instrumentalness</option>
-							<option value="tempo">Tempo</option>
-						</select>
-					</label>
-				</div>
-			</div>
+    <section id="recs-card" class="card span-3">
+      <div id="recommendations"></div>
+    </section>
 
-			<div id="sim-scatter"></div>
-		</section>
+  </div>
 
-		<section id="card-message" class="card centered-message" style="display:none;">
-			<div id="no-features"></div>
-		</section>
+  <div id="page-loading" class="loading-overlay" style="display:none;">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-title">Loading analysis...</div>
+      <div id="loading-sub" class="loading-sub">Fetching audio features</div>
+    </div>
+  </div>
 
-		<section id="recs-card" class="card span-3">
-			<div id="recommendations"></div>
-		</section>
-	</div>
+  <footer>
+    <p>TuneVis | Built using Spotify API, ReccoBeats &amp; Last.fm API</p>
+  </footer>
 
-	<div id="page-loading" class="loading-overlay" style="display:none;">
-		<div class="loading-card">
-			<div class="spinner"></div>
-			<div class="loading-title">Loading analysis...</div>
-			<div id="loading-sub" class="loading-sub">Fetching audio features</div>
-		</div>
-	</div>
+  <div id="chart-tooltip" class="chart-tooltip" style="display:none;"></div>
 
-	<footer>
-		<p>TuneVis | Built using Spotify API, ReccoBeats & Last.fm API</p>
-	</footer>
-
-	<div id="chart-tooltip" class="chart-tooltip" style="display:none;"></div>
-
-	<script type="module" src="scripts/features.js"></script>
-	<script type="module" src="scripts/features-data.js"></script>
-	<script type="module" src="scripts/features-charts.js"></script>
+  <script type="module" src="scripts/features.js"></script>
+  <script type="module" src="scripts/features-data.js"></script>
+  <script type="module" src="scripts/features-charts.js"></script>
 </body>
 </html>
