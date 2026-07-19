@@ -17,9 +17,25 @@
     <div class="bg-circle c4"></div>
   </div>
 
-  <header style="text-align:center; margin-top:20px;">
-    <button id="back-btn" style="position:absolute; left:20px; top:20px;">Back</button>
-    <button id="audio-help-btn" style="position:absolute; right:20px; top:20px;">? Audio Features</button>
+  <header class="features-header">
+    <button id="back-btn">&#8592; Back</button>
+
+    <a href="home.html" class="header-logo-link" title="TuneVis home">
+      <svg class="header-logo-bars" viewBox="0 0 72 28" preserveAspectRatio="xMidYMid meet">
+        <g class="audio-bars">
+          <rect x="4"  y="10" width="5" height="8"  rx="2.5"/>
+          <rect x="14" y="4"  width="5" height="20" rx="2.5"/>
+          <rect x="24" y="6"  width="5" height="16" rx="2.5"/>
+          <rect x="34" y="2"  width="5" height="24" rx="2.5"/>
+          <rect x="44" y="8"  width="5" height="12" rx="2.5"/>
+          <rect x="54" y="4"  width="5" height="20" rx="2.5"/>
+          <rect x="64" y="10" width="5" height="8"  rx="2.5"/>
+        </g>
+      </svg>
+      <span class="header-logo-text">TuneVis</span>
+    </a>
+
+    <button id="audio-help-btn">? Audio Features</button>
   </header>
 
   <div id="track-info" style="margin-top:70px; text-align:center;"></div>

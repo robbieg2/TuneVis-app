@@ -110,6 +110,56 @@ header.logo .logo-title {
 	letter-spacing: 0.08em;
 }
 
+/* ── Features page header ────────────────────────────────────────── */
+.features-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 140px;
+    margin-top: 8px;
+}
+
+.features-header #back-btn,
+.features-header #audio-help-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.features-header #back-btn      { left: 20px; }
+.features-header #audio-help-btn { right: 20px; }
+
+/* Mini TuneVis logo in header centre */
+.header-logo-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-decoration: none;
+    color: inherit;
+    transition: opacity 0.15s;
+}
+.header-logo-link:hover { opacity: 0.75; }
+
+.header-logo-bars {
+    width: 44px;
+    height: auto;
+    display: block;
+}
+
+.header-logo-text {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    background: linear-gradient(90deg, #ff7aff 0%, #d65cff 40%, #1db954 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+}
+
+
 /* Compact logo variant for the search/home page */
 .logo-compact {
 	padding: 24px 20px 28px;

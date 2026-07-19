@@ -509,7 +509,7 @@ async function findSeedFeaturesWithFallback(token, track) {
 
 // Main function
 async function init() {
-    if (backBtn) backBtn.addEventListener("click", () => (window.location.href = "home.html"));
+    if (backBtn) backBtn.addEventListener("click", () => history.back());
 
     // Audio features help modal
     const audioHelpBtn = document.getElementById("audio-help-btn");
