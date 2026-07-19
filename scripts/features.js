@@ -484,20 +484,34 @@ async function findSeedFeaturesWithFallback(token, track) {
     if (primary) return { features: primary, isAlternate: false };
 
     const artistName = Array.isArray(track.artists) ? (track.artists[0] || "") : (track.artists || "");
-    const q = `track:"${track.name}" artist:"${artistName}"`;
-    const searchUrl = new URL("https://api.spotify.com/v1/search");
-    searchUrl.searchParams.set("type", "track");
-    searchUrl.searchParams.set("limit", "5");
-    searchUrl.searchParams.set("q", q);
 
-    let altIds = [];
-    try {
-        const data = await spotifyFetch(token, searchUrl.toString());
-        altIds = (data?.tracks?.items || [])
-            .map(t => t.id)
-            .filter(id => id && id !== track.id)
-            .slice(0, 3);
-    } catch {}
+    // Two search passes: strict (quoted) first, then relaxed (no quotes).
+    // The relaxed pass catches older catalog tracks that strict matching misses.
+    const queries = [
+        `track:"${track.name}" artist:"${artistName}"`,
+        `${track.name} ${artistName}`,
+    ];
+
+    const seenIds = new Set([track.id]);
+    const altIds = [];
+
+    for (const q of queries) {
+        if (altIds.length >= 5) break;
+        try {
+            const searchUrl = new URL("https://api.spotify.com/v1/search");
+            searchUrl.searchParams.set("type", "track");
+            searchUrl.searchParams.set("limit", "5");
+            searchUrl.searchParams.set("q", q);
+            const data = await spotifyFetch(token, searchUrl.toString());
+            for (const t of (data?.tracks?.items || [])) {
+                if (t.id && !seenIds.has(t.id)) {
+                    seenIds.add(t.id);
+                    altIds.push(t.id);
+                }
+                if (altIds.length >= 5) break;
+            }
+        } catch {}
+    }
 
     for (const id of altIds) {
         const alt = await getTrackFeaturesFromReccoBeats(id);
