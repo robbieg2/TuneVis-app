@@ -136,6 +136,99 @@ header.logo .logo-title {
 	opacity: 0.6;
 }
 
+/* ── Score badge on recommendation cards ────────────────────────── */
+.score-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #1db954;
+    background: rgba(29, 185, 84, 0.12);
+    border: 1px solid rgba(29, 185, 84, 0.3);
+    border-radius: 20px;
+    padding: 2px 10px;
+    margin-bottom: 7px;
+}
+
+/* ── Artist link (clickable artist names) ───────────────────────── */
+.artist-link {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,0.25);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.15s, color 0.15s;
+}
+.artist-link:hover {
+    color: #1db954;
+    text-decoration-color: #1db954;
+}
+
+/* ── Artist top-tracks modal ────────────────────────────────────── */
+.artist-modal-card {
+    max-width: 520px;
+    width: 92vw;
+}
+.artist-modal-name {
+    margin: 0 0 4px;
+}
+.artist-modal-sub {
+    margin: 0 0 16px;
+    font-size: 13px;
+}
+.artist-tracks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+.artist-track-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    transition: background 0.15s;
+}
+.artist-track-item:hover {
+    background: rgba(255,255,255,0.08);
+}
+.artist-track-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.artist-track-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.artist-track-name {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.artist-track-album {
+    font-size: 12px;
+    opacity: 0.55;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.artist-analyse-btn {
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 5px 12px;
+}
+
+
 footer {
 	margin-top: auto;
 	opacity: 0.7;
@@ -693,13 +786,6 @@ button {
 
 /* Radar chart hint */
 
-.alt-version-notice {
-    font-size: 12px;
-    opacity: 0.6;
-    margin: 8px 0 0;
-    font-style: italic;
-    text-align: center;
-}
 .chart-hint {
   font-size: 12px;
   opacity: 0.65;

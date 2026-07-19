@@ -33,7 +33,9 @@ function setLoading(on, sub = "") {
 
 // Track header with embed	
 function renderTrackHeader(track) {
-    const artists = (track.artists || []).join(", ");
+    const artistSpans = (track.artists || [])
+        .map(a => `<span class="artist-link" data-artist-name="${a}">${a}</span>`)
+        .join(", ");
 
     trackInfo.innerHTML = `
         <div class="seed-header">
@@ -41,7 +43,7 @@ function renderTrackHeader(track) {
 
             <div class="seed-meta">
                 <h1 class="seed-title">${track.name}</h1>
-                <p class="seed-artists">${artists}</p>
+                <p class="seed-artists">${artistSpans}</p>
 
                 <iframe
                     class="seed-embed"
@@ -173,8 +175,8 @@ function hideVisualSections() {
         noFeat.style.display = "block";
         noFeat.innerHTML = `
             <div>
-                <h3>No audio features available for this track</h3>
-                <p style="opacity:0.85;">Try another song</p>
+                <h3>Audio features not yet available</h3>
+                <p style="opacity:0.85;">This track may have been released too recently to be indexed.<br>Check back soon, or try a different song in the meantime.</p>
             </div>
         `;
     }
@@ -251,7 +253,9 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 		card.className = "rec-card";
 		card.dataset.trackId = id;
 		const trackMeta = r.track || null;
+		const scorePct = r.score != null ? Math.round(r.score * 100) : null;
 		card.innerHTML = `
+			${scorePct != null ? `<div class="score-badge">${scorePct}% match</div>` : ""}
 			<iframe
 				src="https://open.spotify.com/embed/track/${id}"
 				width="100%"
@@ -399,6 +403,80 @@ function renderShuffleView() {
 	drawSimilarityScatter(seed, scatterRows);
 }	
 
+// Make artist names on the track header clickable — opens a top-tracks modal
+function attachArtistLinks(spotifyArtists, token) {
+    const links = trackInfo ? trackInfo.querySelectorAll(".artist-link") : [];
+    links.forEach(link => {
+        const name = link.dataset.artistName;
+        const artist = spotifyArtists.find(a => a.name === name);
+        if (!artist) return;
+        link.addEventListener("click", () => openArtistModal(artist.id, artist.name, token));
+    });
+}
+
+async function openArtistModal(artistId, artistName, token) {
+    // Remove any existing artist modal
+    document.getElementById("artist-modal")?.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "artist-modal";
+    modal.className = "site-info-modal open";
+    modal.innerHTML = `
+        <div class="site-info-card artist-modal-card">
+            <button class="site-info-close" aria-label="Close">X</button>
+            <h2 class="artist-modal-name">${artistName}</h2>
+            <p class="muted artist-modal-sub">Top Tracks</p>
+            <div class="artist-tracks-list" id="artist-tracks-list">
+                <p class="tab-loading">Loading…</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector(".site-info-close").addEventListener("click", () => modal.remove());
+    modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+    try {
+        const data = await spotifyFetch(token, `https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=GB`);
+        const tracks = (data?.tracks || []).slice(0, 8);
+        const list = document.getElementById("artist-tracks-list");
+        if (!list) return;
+
+        if (!tracks.length) {
+            list.innerHTML = `<p class="muted">No top tracks found.</p>`;
+            return;
+        }
+
+        list.innerHTML = "";
+        tracks.forEach(t => {
+            const trackMeta = {
+                id: t.id,
+                name: t.name,
+                artists: (t.artists || []).map(a => a.name),
+                image: t.album?.images?.[0]?.url || "",
+            };
+            const item = document.createElement("div");
+            item.className = "artist-track-item";
+            item.innerHTML = `
+                ${trackMeta.image ? `<img class="artist-track-img" src="${trackMeta.image}" alt="Album art">` : ""}
+                <div class="artist-track-info">
+                    <span class="artist-track-name">${t.name}</span>
+                    <span class="artist-track-album">${t.album?.name || ""}</span>
+                </div>
+                <button class="features-btn artist-analyse-btn">Analyse</button>
+            `;
+            item.querySelector(".artist-analyse-btn").addEventListener("click", () => {
+                saveToRecent(trackMeta);
+                window.location.href = `features.html?track=${encodeURIComponent(JSON.stringify(trackMeta))}`;
+            });
+            list.appendChild(item);
+        });
+    } catch (err) {
+        const list = document.getElementById("artist-tracks-list");
+        if (list) list.innerHTML = `<p class="muted">Could not load tracks.</p>`;
+    }
+}
+
 // Try the seed track's ID first; if ReccoBeats has no data, search Spotify
 // for alternate versions (single vs album vs remaster) and try each in turn.
 async function findSeedFeaturesWithFallback(token, track) {
@@ -538,19 +616,16 @@ async function init() {
             return;
         }
 
-        const { features: seedFeatures, isAlternate } = seedResult;
+        const { features: seedFeatures } = seedResult;
 
         showVisualSections();
 
-        if (isAlternate && trackInfo) {
-            const notice = document.createElement("p");
-            notice.className = "alt-version-notice";
-            notice.textContent = "Audio features sourced from an alternate version of this track";
-            trackInfo.appendChild(notice);
-        }
 		
         const seedMeta = await spotifyFetch(token, `https://api.spotify.com/v1/tracks/${track.id}`);
         const market = getSeedMarketFromSeedMeta(seedMeta);
+
+        // Wire up artist name links now that we have Spotify artist IDs
+        attachArtistLinks(seedMeta?.artists || [], token);
 
         const seedArtistName = seedMeta?.artists?.[0]?.name || track.artists?.[0] || "";
         const seedTrackName = seedMeta?.name || track.name || "";
