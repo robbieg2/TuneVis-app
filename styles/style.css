@@ -692,6 +692,14 @@ button {
 }
 
 /* Radar chart hint */
+
+.alt-version-notice {
+    font-size: 12px;
+    opacity: 0.6;
+    margin: 8px 0 0;
+    font-style: italic;
+    text-align: center;
+}
 .chart-hint {
   font-size: 12px;
   opacity: 0.65;

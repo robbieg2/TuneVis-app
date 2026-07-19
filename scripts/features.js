@@ -399,6 +399,36 @@ function renderShuffleView() {
 	drawSimilarityScatter(seed, scatterRows);
 }	
 
+// Try the seed track's ID first; if ReccoBeats has no data, search Spotify
+// for alternate versions (single vs album vs remaster) and try each in turn.
+async function findSeedFeaturesWithFallback(token, track) {
+    const primary = await getTrackFeaturesFromReccoBeats(track.id);
+    if (primary) return { features: primary, isAlternate: false };
+
+    const artistName = Array.isArray(track.artists) ? (track.artists[0] || "") : (track.artists || "");
+    const q = `track:"${track.name}" artist:"${artistName}"`;
+    const searchUrl = new URL("https://api.spotify.com/v1/search");
+    searchUrl.searchParams.set("type", "track");
+    searchUrl.searchParams.set("limit", "5");
+    searchUrl.searchParams.set("q", q);
+
+    let altIds = [];
+    try {
+        const data = await spotifyFetch(token, searchUrl.toString());
+        altIds = (data?.tracks?.items || [])
+            .map(t => t.id)
+            .filter(id => id && id !== track.id)
+            .slice(0, 3);
+    } catch {}
+
+    for (const id of altIds) {
+        const alt = await getTrackFeaturesFromReccoBeats(id);
+        if (alt) return { features: alt, isAlternate: true };
+    }
+
+    return null;
+}
+
 // Main function
 async function init() {
     if (backBtn) backBtn.addEventListener("click", () => (window.location.href = "home.html"));
@@ -500,15 +530,24 @@ async function init() {
 
     try {	
 		setLoading(true, "Fetching audio features...");
-		
-        const seedFeatures = await getTrackFeaturesFromReccoBeats(track.id);
 
-        if (!seedFeatures) {
+        const seedResult = await findSeedFeaturesWithFallback(token, track);
+
+        if (!seedResult) {
             hideVisualSections();
             return;
         }
 
+        const { features: seedFeatures, isAlternate } = seedResult;
+
         showVisualSections();
+
+        if (isAlternate && trackInfo) {
+            const notice = document.createElement("p");
+            notice.className = "alt-version-notice";
+            notice.textContent = "Audio features sourced from an alternate version of this track";
+            trackInfo.appendChild(notice);
+        }
 		
         const seedMeta = await spotifyFetch(token, `https://api.spotify.com/v1/tracks/${track.id}`);
         const market = getSeedMarketFromSeedMeta(seedMeta);
