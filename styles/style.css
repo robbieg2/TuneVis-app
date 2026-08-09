@@ -15,6 +15,11 @@ body {
 	overflow-x: hidden;
 }
 
+body.page-flex {
+	display: flex;
+	flex-direction: column;
+}
+
 body::before {
 	content: "";
 	position: fixed;
@@ -449,10 +454,52 @@ header.logo .logo-title {
     padding: 0 20px;
 }
 
+.rank-panel-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.rank-panel-title-row .rank-panel-title {
+    margin-bottom: 0;
+}
+
+.clear-rank-btn {
+    font-size: 12px;
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.75);
+    flex-shrink: 0;
+}
+
+.clear-rank-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
 .rank-panel-title {
     font-size: 13px;
     opacity: 0.75;
     margin: 0 0 10px;
+}
+
+.track-search {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.track-search input {
+    flex: 1;
+    min-width: 0;
+}
+
+.track-search button {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .track-list {

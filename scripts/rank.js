@@ -10,6 +10,11 @@ const filterEl = document.getElementById("rank-filter-toggle");
 const trackListEl = document.getElementById("track-list");
 const rankListEl = document.getElementById("rank-list");
 const rankTitleEl = document.getElementById("rank-panel-ranking-title");
+const clearRankBtn = document.getElementById("clear-rank-btn");
+const trackSearchEl = document.getElementById("track-search");
+const trackSearchInput = document.getElementById("track-search-input");
+const trackSearchBtn = document.getElementById("track-search-btn");
+let cachedToken = null;
 
 if (backBtn) backBtn.addEventListener("click", () => history.back());
 
@@ -134,7 +139,7 @@ function trackRow(track) {
             <span class="track-row-sub">${(track.artists || []).join(", ")}</span>
         </div>
         ${isRanked
-            ? `<i class="ti ti-check track-row-check" aria-hidden="true"></i>`
+            ? `<span class="track-row-check" aria-hidden="true">&#10003;</span>`
             : `<button class="track-row-add" aria-label="Add to ranking" ${rankedIds.length >= rankSize ? "disabled" : ""}>+</button>`
         }
     `;
@@ -173,9 +178,9 @@ function rankRow(trackId, index) {
             <span class="track-row-sub">${(track.artists || []).join(", ")}</span>
         </div>
         <div class="rank-row-controls">
-            <button class="rank-row-move" data-dir="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
-            <button class="rank-row-move" data-dir="down" aria-label="Move down" ${index === rankedIds.length - 1 ? "disabled" : ""}><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
-            <button class="rank-row-remove" aria-label="Remove from ranking"><i class="ti ti-x" aria-hidden="true"></i></button>
+            <button class="rank-row-move" data-dir="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}>&#9650;</button>
+            <button class="rank-row-move" data-dir="down" aria-label="Move down" ${index === rankedIds.length - 1 ? "disabled" : ""}>&#9660;</button>
+            <button class="rank-row-remove" aria-label="Remove from ranking">&#10005;</button>
         </div>
     `;
 
@@ -246,6 +251,78 @@ function initShare() {
     });
 }
 
+// ── Clear rankings ──────────────────────────────────────────────────
+function initClearButton() {
+    if (!clearRankBtn) return;
+    clearRankBtn.addEventListener("click", () => {
+        if (!rankedIds.length) return;
+        if (!confirm("Clear your current ranking? This can't be undone.")) return;
+        rankedIds = [];
+        renderAll();
+        syncUrl();
+    });
+}
+
+// ── Extra catalog search (artists only — deep cuts beyond top tracks) ──
+function initTrackSearch() {
+    if (meta.type !== "artist" || !trackSearchEl) return;
+    trackSearchEl.style.display = "flex";
+
+    const run = () => {
+        const q = trackSearchInput.value.trim();
+        if (q) searchArtistCatalog(q);
+    };
+
+    trackSearchBtn?.addEventListener("click", run);
+    trackSearchInput?.addEventListener("keydown", e => {
+        if (e.key === "Enter") run();
+    });
+}
+
+async function searchArtistCatalog(query) {
+    if (!cachedToken) return;
+    const originalLabel = trackSearchBtn.textContent;
+    trackSearchBtn.textContent = "Searching…";
+    trackSearchBtn.disabled = true;
+
+    try {
+        const url = new URL("https://api.spotify.com/v1/search");
+        url.searchParams.set("q", `track:"${query}" artist:"${meta.name}"`);
+        url.searchParams.set("type", "track");
+        url.searchParams.set("limit", "10");
+        url.searchParams.set("market", "GB");
+
+        const data = await spotifyFetch(cachedToken, url.toString());
+        const found = (data?.tracks?.items || []).map(t => ({
+            id: t.id,
+            name: t.name,
+            artists: (t.artists || []).map(a => a.name),
+            image: t.album?.images?.[0]?.url || meta.image,
+        }));
+
+        const existingIds = new Set(allTracks.map(t => t.id));
+        const newOnes = found.filter(t => !existingIds.has(t.id));
+
+        if (newOnes.length) {
+            allTracks = [...allTracks, ...newOnes];
+            renderTrackList();
+        }
+
+        if (!found.length) {
+            trackSearchBtn.textContent = "No results";
+            setTimeout(() => (trackSearchBtn.textContent = originalLabel), 1400);
+        } else {
+            trackSearchBtn.textContent = originalLabel;
+        }
+    } catch (err) {
+        console.error(err);
+        trackSearchBtn.textContent = "Search failed";
+        setTimeout(() => (trackSearchBtn.textContent = originalLabel), 1400);
+    } finally {
+        trackSearchBtn.disabled = false;
+    }
+}
+
 // ── Init ───────────────────────────────────────────────────────────────
 async function init() {
     const { type, id, size, order } = getParams();
@@ -257,6 +334,7 @@ async function init() {
 
     try {
         const token = await getSpotifyToken();
+        cachedToken = token;
         if (type === "artist") await loadArtist(token, id);
         else await loadAlbum(token, id);
 
@@ -272,6 +350,8 @@ async function init() {
         renderAll();
         initMobileTabs();
         initShare();
+        initTrackSearch();
+        initClearButton();
 
         loadingEl.style.display = "none";
         pageEl.style.display = "block";

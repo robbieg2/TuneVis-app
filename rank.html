@@ -6,7 +6,7 @@
   <title>TuneVis — Rank</title>
   <link rel="stylesheet" href="styles/style.css">
 </head>
-<body>
+<body class="page-flex">
   <div class="bg-layer">
     <div class="bg-circle c1"></div>
     <div class="bg-circle c2"></div>
@@ -57,12 +57,19 @@
 
     <div class="rank-columns">
       <section class="rank-panel" id="rank-panel-tracks">
-        <p class="rank-panel-title">Tracklist</p>
+        <p class="rank-panel-title" id="rank-panel-tracks-title">Tracklist</p>
+        <div class="track-search" id="track-search" style="display:none;">
+          <input type="text" id="track-search-input" placeholder="Search this artist's full discography..." />
+          <button id="track-search-btn">Search</button>
+        </div>
         <div class="track-list" id="track-list"></div>
       </section>
 
       <section class="rank-panel" id="rank-panel-ranking">
-        <p class="rank-panel-title" id="rank-panel-ranking-title">Your ranking</p>
+        <div class="rank-panel-title-row">
+          <p class="rank-panel-title" id="rank-panel-ranking-title">Your ranking</p>
+          <button id="clear-rank-btn" class="clear-rank-btn" type="button">Clear rankings</button>
+        </div>
         <div class="rank-list" id="rank-list"></div>
       </section>
     </div>

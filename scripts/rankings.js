@@ -40,14 +40,22 @@ async function doSearch(query) {
         const url = new URL("https://api.spotify.com/v1/search");
         url.searchParams.set("q", query);
         url.searchParams.set("type", "artist,album");
-        url.searchParams.set("limit", "8");
+        // Fetch extra album results up front since many will be filtered out below
+        url.searchParams.set("limit", "20");
 
         const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${t}` } });
         if (!res.ok) throw new Error(`Search failed: ${res.status}`);
         const data = await res.json();
 
-        const artists = data?.artists?.items || [];
-        const albums = data?.albums?.items || [];
+        const MIN_ALBUM_TRACKS = 4;
+
+        const artists = (data?.artists?.items || []).slice(0, 8);
+        // Spotify tags most singles as album_type "single", but many artists now
+        // release short multi-track "album" releases too — so filter on actual
+        // track count rather than trusting album_type alone.
+        const albums = (data?.albums?.items || [])
+            .filter(al => (al.total_tracks || 0) >= MIN_ALBUM_TRACKS)
+            .slice(0, 8);
 
         resultsEl.innerHTML = "";
 
