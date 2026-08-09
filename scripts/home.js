@@ -268,16 +268,33 @@ async function init() {
     return;
   }
 
+  let searchDebounce = null;
+
   searchBtn.addEventListener("click", () => {
+    clearTimeout(searchDebounce);
     const q = searchInput.value.trim();
     if (q) searchTracks(token, q);
   });
 
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
+      clearTimeout(searchDebounce);
       const q = searchInput.value.trim();
       if (q) searchTracks(token, q);
     }
+  });
+
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim();
+    clearTimeout(searchDebounce);
+
+    if (q.length < 2) {
+      searchWrapper.style.display = "none";
+      resultsDiv.innerHTML = "";
+      return;
+    }
+
+    searchDebounce = setTimeout(() => searchTracks(token, q), 300);
   });
 
   initTabs();
