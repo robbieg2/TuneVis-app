@@ -48,6 +48,8 @@
   <div id="rank-page" style="display:none;">
     <div class="rank-head" id="rank-head"></div>
 
+    <div class="rank-player-wrap" id="rank-player-wrap" style="display:none;"></div>
+
     <div class="rank-filter-toggle" id="rank-filter-toggle"></div>
 
     <div class="rank-mobile-tabs">
@@ -59,7 +61,10 @@
       <section class="rank-panel" id="rank-panel-tracks">
         <p class="rank-panel-title" id="rank-panel-tracks-title">Tracklist</p>
         <div class="track-search" id="track-search" style="display:none;">
-          <input type="text" id="track-search-input" placeholder="Search this artist's full discography..." />
+          <div class="track-search-input-wrap">
+            <input type="text" id="track-search-input" placeholder="Search this artist's full discography..." autocomplete="off" />
+            <div class="track-search-suggestions" id="track-search-suggestions"></div>
+          </div>
           <button id="track-search-btn">Search</button>
         </div>
         <div class="track-list" id="track-list"></div>

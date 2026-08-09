@@ -10,11 +10,14 @@ const filterEl = document.getElementById("rank-filter-toggle");
 const trackListEl = document.getElementById("track-list");
 const rankListEl = document.getElementById("rank-list");
 const rankTitleEl = document.getElementById("rank-panel-ranking-title");
+const playerWrapEl = document.getElementById("rank-player-wrap");
 const clearRankBtn = document.getElementById("clear-rank-btn");
 const trackSearchEl = document.getElementById("track-search");
 const trackSearchInput = document.getElementById("track-search-input");
 const trackSearchBtn = document.getElementById("track-search-btn");
+const trackSearchSuggestions = document.getElementById("track-search-suggestions");
 let cachedToken = null;
+let suggestDebounce = null;
 
 if (backBtn) backBtn.addEventListener("click", () => history.back());
 
@@ -105,10 +108,41 @@ function renderHead() {
     headEl.innerHTML = `
         ${meta.image ? `<img class="rank-head-img ${meta.type === "artist" ? "round" : ""}" src="${meta.image}" alt="">` : ""}
         <div class="rank-head-meta">
-            <h1 class="rank-head-name">${meta.name}</h1>
+            <div class="rank-head-name-row">
+                <h1 class="rank-head-name">${meta.name}</h1>
+                <button id="rank-play-btn" class="rank-play-btn" type="button" aria-label="Play">&#9654; Play</button>
+            </div>
             <p class="rank-head-sub">${meta.subtitle}</p>
         </div>
     `;
+
+    document.getElementById("rank-play-btn")?.addEventListener("click", togglePlayer);
+}
+
+function togglePlayer() {
+    const btn = document.getElementById("rank-play-btn");
+    const isOpen = playerWrapEl.style.display !== "none";
+
+    if (isOpen) {
+        playerWrapEl.style.display = "none";
+        playerWrapEl.innerHTML = "";
+        if (btn) btn.innerHTML = "&#9654; Play";
+        return;
+    }
+
+    const embedPath = meta.type === "album" ? `album/${meta.id}` : `artist/${meta.id}`;
+    playerWrapEl.innerHTML = `
+        <iframe
+            src="https://open.spotify.com/embed/${embedPath}?theme=0"
+            width="100%"
+            height="380"
+            frameborder="0"
+            allowtransparency="true"
+            allow="encrypted-media">
+        </iframe>
+    `;
+    playerWrapEl.style.display = "block";
+    if (btn) btn.innerHTML = "&#10005; Close player";
 }
 
 function renderFilterToggle() {
@@ -256,7 +290,6 @@ function initClearButton() {
     if (!clearRankBtn) return;
     clearRankBtn.addEventListener("click", () => {
         if (!rankedIds.length) return;
-        if (!confirm("Clear your current ranking? This can't be undone.")) return;
         rankedIds = [];
         renderAll();
         syncUrl();
@@ -271,12 +304,93 @@ function initTrackSearch() {
     const run = () => {
         const q = trackSearchInput.value.trim();
         if (q) searchArtistCatalog(q);
+        hideSuggestions();
     };
 
     trackSearchBtn?.addEventListener("click", run);
     trackSearchInput?.addEventListener("keydown", e => {
         if (e.key === "Enter") run();
+        if (e.key === "Escape") hideSuggestions();
     });
+
+    trackSearchInput?.addEventListener("input", () => {
+        const q = trackSearchInput.value.trim();
+        clearTimeout(suggestDebounce);
+        if (q.length < 2) {
+            hideSuggestions();
+            return;
+        }
+        suggestDebounce = setTimeout(() => fetchSuggestions(q), 300);
+    });
+
+    document.addEventListener("click", e => {
+        if (!trackSearchEl.contains(e.target)) hideSuggestions();
+    });
+}
+
+function hideSuggestions() {
+    if (trackSearchSuggestions) {
+        trackSearchSuggestions.innerHTML = "";
+        trackSearchSuggestions.style.display = "none";
+    }
+}
+
+async function fetchSuggestions(query) {
+    if (!cachedToken || !trackSearchSuggestions) return;
+
+    try {
+        const url = new URL("https://api.spotify.com/v1/search");
+        url.searchParams.set("q", `track:"${query}" artist:"${meta.name}"`);
+        url.searchParams.set("type", "track");
+        url.searchParams.set("limit", "6");
+        url.searchParams.set("market", "GB");
+
+        const data = await spotifyFetch(cachedToken, url.toString());
+        const results = (data?.tracks?.items || []).map(t => ({
+            id: t.id,
+            name: t.name,
+            artists: (t.artists || []).map(a => a.name),
+            image: t.album?.images?.[0]?.url || meta.image,
+        }));
+
+        renderSuggestions(results);
+    } catch (err) {
+        console.error(err);
+        hideSuggestions();
+    }
+}
+
+function renderSuggestions(results) {
+    if (!results.length) {
+        hideSuggestions();
+        return;
+    }
+
+    trackSearchSuggestions.innerHTML = "";
+    results.forEach(track => {
+        const isAdded = allTracks.some(t => t.id === track.id);
+        const item = document.createElement("div");
+        item.className = "track-suggestion";
+        item.innerHTML = `
+            ${track.image ? `<img class="track-suggestion-img" src="${track.image}" alt="">` : ""}
+            <div class="track-suggestion-meta">
+                <span class="track-suggestion-name">${track.name}</span>
+                <span class="track-suggestion-sub">${(track.artists || []).join(", ")}</span>
+            </div>
+            ${isAdded ? `<span class="track-suggestion-tag">In list</span>` : ""}
+        `;
+        item.addEventListener("click", () => {
+            if (!allTracks.some(t => t.id === track.id)) {
+                allTracks = [...allTracks, track];
+                renderTrackList();
+            }
+            trackSearchInput.value = "";
+            hideSuggestions();
+        });
+        trackSearchSuggestions.appendChild(item);
+    });
+
+    trackSearchSuggestions.style.display = "block";
 }
 
 async function searchArtistCatalog(query) {
