@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TuneVis — Rank</title>
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+<body>
+  <div class="bg-layer">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+    <div class="bg-circle c4"></div>
+  </div>
+
+  <header class="features-header">
+    <button id="back-btn">&#8592; Back</button>
+
+    <a href="home.html" class="header-logo-link" title="TuneVis home">
+      <div class="header-logo-inner">
+        <svg class="header-logo-bars" viewBox="0 0 80 34" preserveAspectRatio="xMidYMid meet">
+          <g class="audio-bars">
+            <rect x="4"  y="13" width="5" height="8"  rx="2.5"/>
+            <rect x="15" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="26" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="37" y="2"  width="5" height="30" rx="2.5"/>
+            <rect x="48" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="59" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="70" y="13" width="5" height="8"  rx="2.5"/>
+          </g>
+        </svg>
+        <span class="header-logo-text">TuneVis</span>
+      </div>
+    </a>
+
+    <button id="share-btn">Copy link</button>
+  </header>
+
+  <div id="rank-page-loading" class="loading-overlay">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-title">Loading tracklist...</div>
+      <div class="loading-sub">Fetching from Spotify</div>
+    </div>
+  </div>
+
+  <div id="rank-page" style="display:none;">
+    <div class="rank-head" id="rank-head"></div>
+
+    <div class="rank-filter-toggle" id="rank-filter-toggle"></div>
+
+    <div class="rank-mobile-tabs">
+      <button class="tab-btn active" data-panel="tracks">Tracklist</button>
+      <button class="tab-btn" data-panel="ranking">Your ranking</button>
+    </div>
+
+    <div class="rank-columns">
+      <section class="rank-panel" id="rank-panel-tracks">
+        <p class="rank-panel-title">Tracklist</p>
+        <div class="track-list" id="track-list"></div>
+      </section>
+
+      <section class="rank-panel" id="rank-panel-ranking">
+        <p class="rank-panel-title" id="rank-panel-ranking-title">Your ranking</p>
+        <div class="rank-list" id="rank-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <p>TuneVis | Built using Spotify API, ReccoBeats &amp; Last.fm API</p>
+  </footer>
+
+  <script type="module" src="scripts/rank.js"></script>
+</body>
+</html>

@@ -121,14 +121,16 @@ header.logo .logo-title {
 }
 
 .features-header #back-btn,
-.features-header #audio-help-btn {
+.features-header #audio-help-btn,
+.features-header #share-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
 }
 
 .features-header #back-btn      { left: 20px; }
-.features-header #audio-help-btn { right: 20px; }
+.features-header #audio-help-btn,
+.features-header #share-btn     { right: 20px; }
 
 /* Mini TuneVis logo in header centre */
 .header-logo-link {
@@ -288,6 +290,302 @@ header.logo .logo-title {
     flex-shrink: 0;
     font-size: 12px;
     padding: 5px 12px;
+}
+
+
+/* ── Rankings search page ───────────────────────────────────────── */
+.rankings-intro {
+    text-align: center;
+    margin: 24px 20px 0;
+}
+
+.rankings-title {
+    margin: 0;
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 800;
+}
+
+.rankings-sub {
+    margin: 8px 0 0;
+    opacity: 0.75;
+    font-size: 14px;
+}
+
+#rankings-search-section {
+    margin: 20px;
+    text-align: center;
+}
+
+.rankings-results-grid {
+    max-width: 900px;
+    margin: 20px auto 40px;
+    padding: 0 20px;
+}
+
+.rank-result-group {
+    margin-bottom: 28px;
+}
+
+.rank-result-group-title {
+    font-size: 15px;
+    opacity: 0.8;
+    margin: 0 0 12px;
+}
+
+.rank-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.rank-result-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.rank-result-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.rank-result-img {
+    width: 46px;
+    height: 46px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.rank-result-img.round {
+    border-radius: 50%;
+}
+
+.rank-result-placeholder {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.rank-result-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rank-result-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rank-result-sub {
+    font-size: 12px;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Rank workspace page ────────────────────────────────────────── */
+.rank-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    max-width: 700px;
+    margin: 12px auto 0;
+    padding: 0 20px;
+    text-align: left;
+}
+
+.rank-head-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.rank-head-img.round {
+    border-radius: 50%;
+}
+
+.rank-head-name {
+    margin: 0;
+    font-size: clamp(20px, 3.5vw, 28px);
+}
+
+.rank-head-sub {
+    margin: 4px 0 0;
+    opacity: 0.7;
+    font-size: 14px;
+}
+
+.rank-filter-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0 8px;
+}
+
+.rank-mobile-tabs {
+    display: none;
+}
+
+.rank-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    max-width: 900px;
+    margin: 12px auto 40px;
+    padding: 0 20px;
+}
+
+.rank-panel-title {
+    font-size: 13px;
+    opacity: 0.75;
+    margin: 0 0 10px;
+}
+
+.track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 264px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.rank-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.track-row,
+.rank-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 7px 10px;
+}
+
+.track-row.added {
+    opacity: 0.55;
+}
+
+.rank-row.empty {
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.18);
+    background: transparent;
+    opacity: 0.6;
+}
+
+.rank-row-num {
+    width: 18px;
+    flex-shrink: 0;
+    font-size: 13px;
+    opacity: 0.6;
+    text-align: center;
+}
+
+.rank-row-empty-text {
+    font-size: 13px;
+    opacity: 0.7;
+}
+
+.track-row-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 5px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.track-row-meta {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.track-row-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-row-sub {
+    font-size: 11px;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-row-add {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.track-row-add:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.track-row-check {
+    flex-shrink: 0;
+    font-size: 16px;
+    color: #1db954;
+}
+
+.rank-row-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.rank-row-move,
+.rank-row-remove {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.rank-row-move:hover,
+.rank-row-remove:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.rank-row-move:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
 }
 
 
@@ -938,6 +1236,21 @@ button {
 
   .home-tabs {
     margin-top: 24px;
+  }
+
+  .rank-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-mobile-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 4px 0 4px;
+  }
+
+  .rank-panel.mobile-hidden {
+    display: none;
   }
 }
 
