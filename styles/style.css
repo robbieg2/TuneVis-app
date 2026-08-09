@@ -137,7 +137,8 @@ header.logo .logo-title {
 .features-header #audio-help-btn,
 .features-header #share-btn     { right: 20px; }
 
-.features-header #back-btn {
+.features-header #back-btn,
+.features-header #audio-help-btn {
     font-size: 18px;
     line-height: 1;
     padding: 8px 16px;

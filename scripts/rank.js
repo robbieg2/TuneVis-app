@@ -197,9 +197,15 @@ function trackRow(track) {
 
 function renderTrackList() {
     trackListEl.innerHTML = "";
-    // Keep the visible tracklist in sync with the current ranking size —
-    // Top 5 shows 5 tracks, Top 10 shows 10, Whole album shows every track.
-    leftPanelTracks.slice(0, rankSize).forEach(t => trackListEl.appendChild(trackRow(t)));
+    leftPanelTracks.forEach(t => trackListEl.appendChild(trackRow(t)));
+    updateTrackListHeight();
+}
+
+function updateTrackListHeight() {
+    // Grow how much of the tracklist is visible before scrolling as the
+    // ranking size increases — the list itself always shows every track.
+    const visibleRows = Math.min(rankSize, 10);
+    trackListEl.style.maxHeight = `${24 + visibleRows * 48}px`;
 }
 
 function rankRow(trackId, index) {
