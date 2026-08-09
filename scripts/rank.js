@@ -22,11 +22,18 @@ let suggestDebounce = null;
 if (backBtn) backBtn.addEventListener("click", () => history.back());
 
 // ── State ──────────────────────────────────────────────────────────────
-let meta = null;          // { type, id, name, subtitle, image }
-let allTracks = [];       // [{ id, name, artists, image }]
-let sizeOptions = [];     // [{ label, value }]
+let meta = null;             // { type, id, name, subtitle, image }
+let allTracks = [];          // full lookup pool (id -> metadata), used for rank list rendering
+let leftPanelTracks = [];    // subset actually rendered in the left tracklist column
+let sizeOptions = [];        // [{ label, value }]
 let rankSize = 5;
-let rankedIds = [];       // ordered array of track ids, length <= rankSize
+let rankedIds = [];          // ordered array of track ids, length <= rankSize
+
+function addToPool(track) {
+    if (!allTracks.some(t => t.id === track.id)) {
+        allTracks = [...allTracks, track];
+    }
+}
 
 function getParams() {
     const p = new URLSearchParams(window.location.search);
@@ -190,7 +197,9 @@ function trackRow(track) {
 
 function renderTrackList() {
     trackListEl.innerHTML = "";
-    allTracks.forEach(t => trackListEl.appendChild(trackRow(t)));
+    // Keep the visible tracklist in sync with the current ranking size —
+    // Top 5 shows 5 tracks, Top 10 shows 10, Whole album shows every track.
+    leftPanelTracks.slice(0, rankSize).forEach(t => trackListEl.appendChild(trackRow(t)));
 }
 
 function rankRow(trackId, index) {
@@ -303,8 +312,9 @@ function initTrackSearch() {
 
     const run = () => {
         const q = trackSearchInput.value.trim();
-        if (q) searchArtistCatalog(q);
-        hideSuggestions();
+        clearTimeout(suggestDebounce);
+        if (q.length >= 2) fetchSearchResults(q);
+        else hideSuggestions();
     };
 
     trackSearchBtn?.addEventListener("click", run);
@@ -320,7 +330,7 @@ function initTrackSearch() {
             hideSuggestions();
             return;
         }
-        suggestDebounce = setTimeout(() => fetchSuggestions(q), 300);
+        suggestDebounce = setTimeout(() => fetchSearchResults(q), 300);
     });
 
     document.addEventListener("click", e => {
@@ -335,106 +345,124 @@ function hideSuggestions() {
     }
 }
 
-async function fetchSuggestions(query) {
+function addSearchResultToRanking(track, rowEl) {
+    if (rankedIds.length >= rankSize || rankedIds.includes(track.id)) return;
+    addToPool(track);
+    rankedIds.push(track.id);
+    renderRankList();
+    renderTrackList();
+    syncUrl();
+    markSearchRowAdded(rowEl);
+}
+
+function markSearchRowAdded(rowEl) {
+    const btn = rowEl.querySelector(".track-suggestion-add");
+    if (btn) {
+        btn.textContent = "Added";
+        btn.disabled = true;
+    }
+}
+
+async function fetchSearchResults(query) {
     if (!cachedToken || !trackSearchSuggestions) return;
 
     try {
-        const url = new URL("https://api.spotify.com/v1/search");
-        url.searchParams.set("q", `track:"${query}" artist:"${meta.name}"`);
-        url.searchParams.set("type", "track");
-        url.searchParams.set("limit", "6");
-        url.searchParams.set("market", "GB");
+        // Search 1: tracks whose title matches, scoped to this artist
+        const trackUrl = new URL("https://api.spotify.com/v1/search");
+        trackUrl.searchParams.set("q", `track:"${query}" artist:"${meta.name}"`);
+        trackUrl.searchParams.set("type", "track");
+        trackUrl.searchParams.set("limit", "6");
+        trackUrl.searchParams.set("market", "GB");
 
-        const data = await spotifyFetch(cachedToken, url.toString());
-        const results = (data?.tracks?.items || []).map(t => ({
+        // Search 2: albums whose title matches, scoped to this artist —
+        // if found, pull that album's full tracklist into the results too
+        const albumUrl = new URL("https://api.spotify.com/v1/search");
+        albumUrl.searchParams.set("q", `album:"${query}" artist:"${meta.name}"`);
+        albumUrl.searchParams.set("type", "album");
+        albumUrl.searchParams.set("limit", "2");
+        albumUrl.searchParams.set("market", "GB");
+
+        const [trackData, albumData] = await Promise.all([
+            spotifyFetch(cachedToken, trackUrl.toString()),
+            spotifyFetch(cachedToken, albumUrl.toString()),
+        ]);
+
+        const trackResults = (trackData?.tracks?.items || []).map(t => ({
             id: t.id,
             name: t.name,
             artists: (t.artists || []).map(a => a.name),
             image: t.album?.images?.[0]?.url || meta.image,
+            sub: (t.artists || []).map(a => a.name).join(", "),
         }));
 
-        renderSuggestions(results);
+        const matchedAlbums = albumData?.albums?.items || [];
+        let albumTrackResults = [];
+
+        if (matchedAlbums.length) {
+            const albumTrackLists = await Promise.all(
+                matchedAlbums.map(al =>
+                    spotifyFetch(cachedToken, `https://api.spotify.com/v1/albums/${al.id}/tracks?market=GB&limit=50`)
+                        .then(data => ({ album: al, tracks: data?.items || [] }))
+                        .catch(() => ({ album: al, tracks: [] }))
+                )
+            );
+
+            albumTrackLists.forEach(({ album, tracks }) => {
+                tracks.forEach(t => {
+                    albumTrackResults.push({
+                        id: t.id,
+                        name: t.name,
+                        artists: (t.artists || []).map(a => a.name),
+                        image: album.images?.[0]?.url || meta.image,
+                        sub: `From ${album.name}`,
+                    });
+                });
+            });
+        }
+
+        const seen = new Set();
+        const combined = [...trackResults, ...albumTrackResults].filter(t => {
+            if (seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+        }).slice(0, 12);
+
+        renderSearchResults(combined);
     } catch (err) {
         console.error(err);
         hideSuggestions();
     }
 }
 
-function renderSuggestions(results) {
+function renderSearchResults(results) {
     if (!results.length) {
-        hideSuggestions();
+        trackSearchSuggestions.innerHTML = `<p class="track-suggestion-empty">No matching songs or albums found</p>`;
+        trackSearchSuggestions.style.display = "block";
         return;
     }
 
     trackSearchSuggestions.innerHTML = "";
     results.forEach(track => {
-        const isAdded = allTracks.some(t => t.id === track.id);
+        const isRanked = rankedIds.includes(track.id);
+        const isFull = rankedIds.length >= rankSize;
         const item = document.createElement("div");
         item.className = "track-suggestion";
         item.innerHTML = `
             ${track.image ? `<img class="track-suggestion-img" src="${track.image}" alt="">` : ""}
             <div class="track-suggestion-meta">
                 <span class="track-suggestion-name">${track.name}</span>
-                <span class="track-suggestion-sub">${(track.artists || []).join(", ")}</span>
+                <span class="track-suggestion-sub">${track.sub || ""}</span>
             </div>
-            ${isAdded ? `<span class="track-suggestion-tag">In list</span>` : ""}
+            <button class="track-suggestion-add" ${isRanked || isFull ? "disabled" : ""}>${isRanked ? "Added" : "+"}</button>
         `;
-        item.addEventListener("click", () => {
-            if (!allTracks.some(t => t.id === track.id)) {
-                allTracks = [...allTracks, track];
-                renderTrackList();
-            }
-            trackSearchInput.value = "";
-            hideSuggestions();
+        item.querySelector(".track-suggestion-add")?.addEventListener("click", e => {
+            e.stopPropagation();
+            addSearchResultToRanking(track, item);
         });
         trackSearchSuggestions.appendChild(item);
     });
 
     trackSearchSuggestions.style.display = "block";
-}
-
-async function searchArtistCatalog(query) {
-    if (!cachedToken) return;
-    const originalLabel = trackSearchBtn.textContent;
-    trackSearchBtn.textContent = "Searching…";
-    trackSearchBtn.disabled = true;
-
-    try {
-        const url = new URL("https://api.spotify.com/v1/search");
-        url.searchParams.set("q", `track:"${query}" artist:"${meta.name}"`);
-        url.searchParams.set("type", "track");
-        url.searchParams.set("limit", "10");
-        url.searchParams.set("market", "GB");
-
-        const data = await spotifyFetch(cachedToken, url.toString());
-        const found = (data?.tracks?.items || []).map(t => ({
-            id: t.id,
-            name: t.name,
-            artists: (t.artists || []).map(a => a.name),
-            image: t.album?.images?.[0]?.url || meta.image,
-        }));
-
-        const existingIds = new Set(allTracks.map(t => t.id));
-        const newOnes = found.filter(t => !existingIds.has(t.id));
-
-        if (newOnes.length) {
-            allTracks = [...allTracks, ...newOnes];
-            renderTrackList();
-        }
-
-        if (!found.length) {
-            trackSearchBtn.textContent = "No results";
-            setTimeout(() => (trackSearchBtn.textContent = originalLabel), 1400);
-        } else {
-            trackSearchBtn.textContent = originalLabel;
-        }
-    } catch (err) {
-        console.error(err);
-        trackSearchBtn.textContent = "Search failed";
-        setTimeout(() => (trackSearchBtn.textContent = originalLabel), 1400);
-    } finally {
-        trackSearchBtn.disabled = false;
-    }
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
@@ -456,6 +484,8 @@ async function init() {
             loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">No tracks found</div><div class="loading-sub">Try a different artist or album.</div></div>`;
             return;
         }
+
+        leftPanelTracks = allTracks.slice();
 
         rankSize = size && sizeOptions.some(o => o.value === size) ? size : sizeOptions[0].value;
         rankedIds = order.filter(oid => allTracks.some(t => t.id === oid)).slice(0, rankSize);

@@ -244,6 +244,7 @@ function initInfoModal() {
           <p>TuneVis compares songs using audio features such as energy, danceability and acousticness. It then ranks similar songs based on the scores of these features.</p>
           <p>Recommendations are filtered either by 'similar songs' or 'similar artists' based on availability, but unfortunately not all songs are available to view.</p>
           <p>Explore recommendations, compare similarity scores, and visualise how tracks relate to each other.</p>
+          <p>TuneVis plays tracks through Spotify's embedded player. For full-length playback rather than short previews, keep Spotify open and logged in in another tab or in the desktop app while you browse.</p>
         </div>
       `;
       document.body.appendChild(modal);

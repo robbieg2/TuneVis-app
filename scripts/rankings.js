@@ -107,7 +107,10 @@ async function doSearch(query) {
     }
 }
 
+let searchDebounce = null;
+
 function triggerSearch() {
+    clearTimeout(searchDebounce);
     const q = searchInput.value.trim();
     if (!q) return;
     doSearch(q);
@@ -117,5 +120,17 @@ if (searchBtn) searchBtn.addEventListener("click", triggerSearch);
 if (searchInput) {
     searchInput.addEventListener("keydown", e => {
         if (e.key === "Enter") triggerSearch();
+    });
+
+    searchInput.addEventListener("input", () => {
+        const q = searchInput.value.trim();
+        clearTimeout(searchDebounce);
+
+        if (q.length < 2) {
+            resultsEl.innerHTML = "";
+            return;
+        }
+
+        searchDebounce = setTimeout(() => doSearch(q), 300);
     });
 }

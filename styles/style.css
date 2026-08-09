@@ -137,6 +137,12 @@ header.logo .logo-title {
 .features-header #audio-help-btn,
 .features-header #share-btn     { right: 20px; }
 
+.features-header #back-btn {
+    font-size: 18px;
+    line-height: 1;
+    padding: 8px 16px;
+}
+
 /* Mini TuneVis logo in header centre */
 .header-logo-link {
     display: flex;
@@ -192,11 +198,7 @@ header.logo .logo-title {
 
 .logo-compact .logo-title {
 	font-size: clamp(36px, 6vw, 64px);
-}
-
-.logo-compact .logo-sub {
-	font-size: 15px;
-	margin-top: 8px;
+	margin-top: 14px;
 }
 
 .logo-compact .logo-bars {
@@ -597,10 +599,30 @@ header.logo .logo-title {
     text-overflow: ellipsis;
 }
 
-.track-suggestion-tag {
+.track-suggestion-add {
     flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.track-suggestion-add:disabled {
+    opacity: 0.4;
+    cursor: default;
     font-size: 10px;
-    opacity: 0.55;
+    width: auto;
+    border-radius: 999px;
+    padding: 0 10px;
+}
+
+.track-suggestion-empty {
+    font-size: 12px;
+    opacity: 0.6;
+    padding: 10px 8px;
+    margin: 0;
 }
 
 .track-list {
@@ -1004,6 +1026,12 @@ button {
     margin: 20px;
     text-align: center;
     border-radius: 20px;
+}
+
+.playback-hint {
+    font-size: 12px;
+    opacity: 0.55;
+    margin: 10px 0 0;
 }
 
 .track-result {
