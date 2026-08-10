@@ -153,3 +153,13 @@ if (searchInput) {
         searchDebounce = setTimeout(() => doSearch(q), 300);
     });
 }
+
+// Browser back/forward cache restores the exact DOM snapshot, including
+// whatever was typed into the search box — clear it so returning to this
+// page via back/forward doesn't show stale leftover text.
+window.addEventListener("pageshow", (e) => {
+    if (e.persisted) {
+        if (searchInput) searchInput.value = "";
+        if (resultsEl) resultsEl.innerHTML = "";
+    }
+});

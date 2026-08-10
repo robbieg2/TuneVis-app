@@ -107,21 +107,26 @@ function displaySearchResults(tracks) {
 
 // ── Trending ─────────────────────────────────────────────────────────────────
 
-async function fetchTrendingTracks() {
+async function fetchTrendingTracks(genre = "all") {
+  const cacheKey = `${TRENDING_CACHE_KEY}_${genre}`;
+
   // Check cache first
   try {
-    const cached = JSON.parse(localStorage.getItem(TRENDING_CACHE_KEY) || "null");
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
     if (cached && Date.now() - cached.cachedAt < TRENDING_CACHE_TTL) {
       return cached.tracks;
     }
   } catch {}
 
-  // 1. Get Last.fm chart
+  // 1. Get Last.fm chart — genre-scoped via tag.getTopTracks, or the
+  // unfiltered global chart when no genre is selected
   const lfUrl = new URL("https://ws.audioscrobbler.com/2.0/");
-  lfUrl.searchParams.set("method", "chart.getTopTracks");
+  const isGenreScoped = genre && genre !== "all";
+  lfUrl.searchParams.set("method", isGenreScoped ? "tag.getTopTracks" : "chart.getTopTracks");
   lfUrl.searchParams.set("api_key", LASTFM_API_KEY);
   lfUrl.searchParams.set("limit", "8");
   lfUrl.searchParams.set("format", "json");
+  if (isGenreScoped) lfUrl.searchParams.set("tag", genre);
 
   const lfRes = await fetch(lfUrl.toString());
   const lfData = await lfRes.json();
@@ -152,23 +157,32 @@ async function fetchTrendingTracks() {
 
   // Cache result
   try {
-    localStorage.setItem(TRENDING_CACHE_KEY, JSON.stringify({ tracks: resolved, cachedAt: Date.now() }));
+    localStorage.setItem(cacheKey, JSON.stringify({ tracks: resolved, cachedAt: Date.now() }));
   } catch {}
 
   return resolved;
 }
 
-async function loadTrending() {
+let trendingRequestId = 0;
+
+async function loadTrending(genre = "all") {
   const loadingEl = document.getElementById("trending-loading");
   const wrapper   = document.getElementById("trending-carousel-wrapper");
   const carousel  = document.getElementById("trending-results");
+  const requestId = ++trendingRequestId;
+
+  carousel.innerHTML = "";
+  wrapper.style.display = "none";
+  if (loadingEl) { loadingEl.textContent = "Loading trending tracks…"; loadingEl.style.display = "block"; }
 
   try {
-    const tracks = await fetchTrendingTracks();
+    const tracks = await fetchTrendingTracks(genre);
+    if (requestId !== trendingRequestId) return; // a newer genre selection superseded this one
+
     if (loadingEl) loadingEl.style.display = "none";
 
     if (!tracks.length) {
-      if (loadingEl) { loadingEl.textContent = "Couldn't load trending tracks."; loadingEl.style.display = "block"; }
+      if (loadingEl) { loadingEl.textContent = "Couldn't find trending tracks for this genre."; loadingEl.style.display = "block"; }
       return;
     }
 
@@ -180,6 +194,7 @@ async function loadTrending() {
       document.getElementById("trend-scroll-right")
     );
   } catch (err) {
+    if (requestId !== trendingRequestId) return;
     console.error("Trending load error:", err);
     if (loadingEl) { loadingEl.textContent = "Couldn't load trending tracks."; loadingEl.style.display = "block"; }
   }
@@ -332,7 +347,26 @@ async function init() {
 
   initTabs();
   initInfoModal();
-  loadTrending();
+
+  const trendingGenreSelect = document.getElementById("trending-genre-select");
+  if (trendingGenreSelect) {
+    trendingGenreSelect.addEventListener("change", () => {
+      loadTrending(trendingGenreSelect.value);
+    });
+  }
+
+  loadTrending(trendingGenreSelect ? trendingGenreSelect.value : "all");
 }
+
+// Browser back/forward cache restores the exact DOM snapshot, including
+// whatever was typed into the search box — clear it so returning to this
+// page via back/forward doesn't show stale leftover text.
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted) {
+    searchInput.value = "";
+    searchWrapper.style.display = "none";
+    resultsDiv.innerHTML = "";
+  }
+});
 
 init();

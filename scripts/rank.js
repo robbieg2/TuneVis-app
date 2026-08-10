@@ -527,4 +527,14 @@ async function init() {
     }
 }
 
+// Browser back/forward cache restores the exact DOM snapshot, including
+// whatever was typed into the search box — clear it so returning to this
+// page via back/forward doesn't show stale leftover text.
+window.addEventListener("pageshow", (e) => {
+    if (e.persisted) {
+        if (trackSearchInput) trackSearchInput.value = "";
+        hideSuggestions();
+    }
+});
+
 init();

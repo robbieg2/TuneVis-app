@@ -19,6 +19,7 @@ const clearRankBtn = document.getElementById("clear-rank-btn");
 const trackSearchInput = document.getElementById("track-search-input");
 const trackSearchBtn = document.getElementById("track-search-btn");
 const trackSearchSuggestions = document.getElementById("track-search-suggestions");
+const genreSelect = document.getElementById("genre-select");
 
 let cachedToken = null;
 let suggestDebounce = null;
@@ -27,11 +28,29 @@ let searchRequestId = 0;
 if (backBtn) backBtn.addEventListener("click", () => history.back());
 
 // ── State ──────────────────────────────────────────────────────────────
+// Each mode keeps its own independent ranking-in-progress — switching
+// back and forth between Artists and Tracks preserves both.
 let mode = "artist";       // "artist" | "track"
+let genre = "all";          // Last.fm tag, or "all" for the unfiltered chart
 let pool = [];              // lookup: id -> { id, name, subtitle, image }
 let leftPanelItems = [];    // popular items shown on the left
 let rankSize = 5;
 let rankedIds = [];
+
+const modeState = {
+    artist: null, // { rankSize, rankedIds, pool, leftPanelItems, genre }
+    track: null,
+};
+
+function saveActiveModeState() {
+    modeState[mode] = {
+        rankSize,
+        rankedIds: rankedIds.slice(),
+        pool: pool.slice(),
+        leftPanelItems: leftPanelItems.slice(),
+        genre,
+    };
+}
 
 const SIZE_OPTIONS = [
     { label: "Top 5", value: 5 },
@@ -43,11 +62,15 @@ function addToPool(item) {
 }
 
 // ── URL state ─────────────────────────────────────────────────────────
+const VALID_GENRES = new Set(["all", "pop", "rock", "hip hop", "electronic", "rnb", "indie", "country", "metal", "jazz", "classical", "folk", "latin"]);
+
 function getParams() {
     const p = new URLSearchParams(window.location.search);
     const m = p.get("mode");
+    const g = p.get("genre");
     return {
         mode: m === "artist" || m === "track" ? m : null,
+        genre: g && VALID_GENRES.has(g) ? g : null,
         size: p.get("size") ? Number(p.get("size")) : null,
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
     };
@@ -56,6 +79,7 @@ function getParams() {
 function syncUrl() {
     const p = new URLSearchParams();
     p.set("mode", mode);
+    p.set("genre", genre);
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
     history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
@@ -72,12 +96,13 @@ async function spotifyFetch(url) {
     return res.json();
 }
 
-async function lastfmChart(method, limit) {
+async function lastfmChart(method, limit, extraParams = {}) {
     const url = new URL(LASTFM_BASE);
     url.searchParams.set("method", method);
     url.searchParams.set("api_key", LASTFM_API_KEY);
     url.searchParams.set("limit", String(limit));
     url.searchParams.set("format", "json");
+    Object.entries(extraParams).forEach(([k, v]) => url.searchParams.set(k, v));
     const res = await fetch(url.toString());
     return res.json();
 }
@@ -98,9 +123,13 @@ async function resolveConcurrently(items, resolver, concurrency = 4) {
     return results;
 }
 
-async function fetchPopularArtists() {
-    const data = await lastfmChart("chart.getTopArtists", 15);
-    const artists = data?.artists?.artist || [];
+async function fetchPopularArtists(genre) {
+    const data = genre && genre !== "all"
+        ? await lastfmChart("tag.getTopArtists", 15, { tag: genre })
+        : await lastfmChart("chart.getTopArtists", 15);
+    const artists = genre && genre !== "all"
+        ? data?.topartists?.artist || []
+        : data?.artists?.artist || [];
     return resolveConcurrently(artists, async a => {
         const url = new URL("https://api.spotify.com/v1/search");
         url.searchParams.set("q", `artist:"${a.name}"`);
@@ -113,8 +142,10 @@ async function fetchPopularArtists() {
     });
 }
 
-async function fetchPopularTracks() {
-    const data = await lastfmChart("chart.getTopTracks", 15);
+async function fetchPopularTracks(genre) {
+    const data = genre && genre !== "all"
+        ? await lastfmChart("tag.getTopTracks", 15, { tag: genre })
+        : await lastfmChart("chart.getTopTracks", 15);
     const tracks = data?.tracks?.track || [];
     return resolveConcurrently(tracks, async t => {
         const url = new URL("https://api.spotify.com/v1/search");
@@ -133,8 +164,8 @@ async function fetchPopularTracks() {
     });
 }
 
-async function loadPopularPool(forMode) {
-    const cacheKey = `tunevis_general_${forMode}_cache`;
+async function loadPopularPool(forMode, forGenre = "all") {
+    const cacheKey = `tunevis_general_${forMode}_${forGenre}_cache`;
     try {
         const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
         if (cached && Date.now() - cached.cachedAt < POOL_CACHE_TTL && Array.isArray(cached.items)) {
@@ -142,7 +173,7 @@ async function loadPopularPool(forMode) {
         }
     } catch {}
 
-    const items = forMode === "artist" ? await fetchPopularArtists() : await fetchPopularTracks();
+    const items = forMode === "artist" ? await fetchPopularArtists(forGenre) : await fetchPopularTracks(forGenre);
 
     try {
         localStorage.setItem(cacheKey, JSON.stringify({ items, cachedAt: Date.now() }));
@@ -296,9 +327,9 @@ function renderAll() {
 // ── Mode toggle ────────────────────────────────────────────────────────
 async function switchMode(newMode) {
     if (newMode === mode) return;
+
+    saveActiveModeState();
     mode = newMode;
-    rankedIds = [];
-    pool = [];
     hideSuggestions();
     trackSearchInput.value = "";
 
@@ -307,14 +338,50 @@ async function switchMode(newMode) {
     });
 
     trackListTitleEl.textContent = mode === "artist" ? "Popular artists" : "Popular tracks";
-    trackSearchInput.placeholder = mode === "artist" ? "Search for an artist..." : "Search for a track...";
+    trackSearchInput.placeholder = mode === "artist" ? "Search for an artist..." : "Search for a track or album...";
+
+    const saved = modeState[mode];
+    if (saved) {
+        // Returning to a mode we've already visited — restore exactly as left it.
+        rankSize = saved.rankSize;
+        rankedIds = saved.rankedIds.slice();
+        pool = saved.pool.slice();
+        leftPanelItems = saved.leftPanelItems.slice();
+        genre = saved.genre;
+        if (genreSelect) genreSelect.value = genre;
+        renderAll();
+    } else {
+        trackListEl.innerHTML = `<p class="tab-loading">Loading…</p>`;
+        rankSize = 5;
+        rankedIds = [];
+        genre = "all";
+        if (genreSelect) genreSelect.value = genre;
+        leftPanelItems = await loadPopularPool(mode, genre);
+        pool = leftPanelItems.slice();
+        renderAll();
+    }
+
+    syncUrl();
+}
+
+// Changing genre refreshes the popular list only — anything already ranked
+// stays exactly as it is, since ranked items carry their own metadata in
+// the pool independent of what the left column happens to be showing.
+async function switchGenre(newGenre) {
+    if (newGenre === genre || !VALID_GENRES.has(newGenre)) return;
+    genre = newGenre;
 
     trackListEl.innerHTML = `<p class="tab-loading">Loading…</p>`;
-    leftPanelItems = await loadPopularPool(mode);
-    pool = leftPanelItems.slice();
+    leftPanelItems = await loadPopularPool(mode, genre);
+    leftPanelItems.forEach(addToPool);
 
     renderAll();
     syncUrl();
+}
+
+function initGenreSelect() {
+    if (!genreSelect) return;
+    genreSelect.addEventListener("change", () => switchGenre(genreSelect.value));
 }
 
 function initModeToggle() {
@@ -393,24 +460,80 @@ async function fetchSearchResults(query) {
     const requestId = ++searchRequestId;
 
     try {
-        const url = new URL("https://api.spotify.com/v1/search");
-        url.searchParams.set("q", query);
-        url.searchParams.set("type", mode === "artist" ? "artist" : "track");
-        url.searchParams.set("limit", "8");
+        if (mode === "artist") {
+            const url = new URL("https://api.spotify.com/v1/search");
+            url.searchParams.set("q", query);
+            url.searchParams.set("type", "artist");
+            url.searchParams.set("limit", "8");
 
-        const data = await spotifyFetch(url.toString());
-
-        const results = mode === "artist"
-            ? (data?.artists?.items || []).map(a => ({ id: a.id, name: a.name, subtitle: "Artist", image: a.images?.[0]?.url || "" }))
-            : (data?.tracks?.items || []).map(t => ({
-                id: t.id,
-                name: t.name,
-                subtitle: (t.artists || []).map(a => a.name).join(", "),
-                image: t.album?.images?.[0]?.url || "",
+            const data = await spotifyFetch(url.toString());
+            const results = (data?.artists?.items || []).map(a => ({
+                id: a.id, name: a.name, subtitle: "Artist", image: a.images?.[0]?.url || "",
             }));
 
+            if (requestId !== searchRequestId) return;
+            renderSearchResults(results);
+            return;
+        }
+
+        // Track mode: search matching track titles, and separately search
+        // matching album titles — if an album matches, pull its full
+        // tracklist into the results too (unscoped, unlike the per-artist page).
+        const trackUrl = new URL("https://api.spotify.com/v1/search");
+        trackUrl.searchParams.set("q", query);
+        trackUrl.searchParams.set("type", "track");
+        trackUrl.searchParams.set("limit", "6");
+
+        const albumUrl = new URL("https://api.spotify.com/v1/search");
+        albumUrl.searchParams.set("q", query);
+        albumUrl.searchParams.set("type", "album");
+        albumUrl.searchParams.set("limit", "2");
+
+        const [trackData, albumData] = await Promise.all([
+            spotifyFetch(trackUrl.toString()),
+            spotifyFetch(albumUrl.toString()),
+        ]);
+
+        const trackResults = (trackData?.tracks?.items || []).map(t => ({
+            id: t.id,
+            name: t.name,
+            subtitle: (t.artists || []).map(a => a.name).join(", "),
+            image: t.album?.images?.[0]?.url || "",
+        }));
+
+        const matchedAlbums = albumData?.albums?.items || [];
+        let albumTrackResults = [];
+
+        if (matchedAlbums.length) {
+            const albumTrackLists = await Promise.all(
+                matchedAlbums.map(al =>
+                    spotifyFetch(`https://api.spotify.com/v1/albums/${al.id}/tracks?limit=50`)
+                        .then(data => ({ album: al, tracks: data?.items || [] }))
+                        .catch(() => ({ album: al, tracks: [] }))
+                )
+            );
+
+            albumTrackLists.forEach(({ album, tracks }) => {
+                tracks.forEach(t => {
+                    albumTrackResults.push({
+                        id: t.id,
+                        name: t.name,
+                        subtitle: `From ${album.name}`,
+                        image: album.images?.[0]?.url || "",
+                    });
+                });
+            });
+        }
+
+        const seen = new Set();
+        const combined = [...trackResults, ...albumTrackResults].filter(t => {
+            if (seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+        }).slice(0, 14);
+
         if (requestId !== searchRequestId) return;
-        renderSearchResults(results);
+        renderSearchResults(combined);
     } catch (err) {
         if (requestId !== searchRequestId) return;
         console.error(err);
@@ -486,15 +609,17 @@ async function init() {
 
         const params = getParams();
         mode = params.mode || "artist";
+        genre = params.genre || "all";
         rankSize = params.size && SIZE_OPTIONS.some(o => o.value === params.size) ? params.size : 5;
 
         document.querySelectorAll("#rank-mode-toggle .tab-btn").forEach(btn => {
             btn.classList.toggle("active", btn.dataset.mode === mode);
         });
         trackListTitleEl.textContent = mode === "artist" ? "Popular artists" : "Popular tracks";
-        trackSearchInput.placeholder = mode === "artist" ? "Search for an artist..." : "Search for a track...";
+        trackSearchInput.placeholder = mode === "artist" ? "Search for an artist..." : "Search for a track or album...";
+        if (genreSelect) genreSelect.value = genre;
 
-        leftPanelItems = await loadPopularPool(mode);
+        leftPanelItems = await loadPopularPool(mode, genre);
         pool = leftPanelItems.slice();
 
         if (params.order.length) {
@@ -506,6 +631,7 @@ async function init() {
 
         renderAll();
         initModeToggle();
+        initGenreSelect();
         initMobileTabs();
         initShare();
         initClearButton();
@@ -519,5 +645,15 @@ async function init() {
         loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">Something went wrong</div><div class="loading-sub">Please try again later.</div></div>`;
     }
 }
+
+// Browser back/forward cache restores the exact DOM snapshot, including
+// whatever was typed into the search box — clear it so returning to this
+// page via back/forward doesn't show stale leftover text.
+window.addEventListener("pageshow", (e) => {
+    if (e.persisted) {
+        if (trackSearchInput) trackSearchInput.value = "";
+        hideSuggestions();
+    }
+});
 
 init();
