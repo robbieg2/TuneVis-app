@@ -11,6 +11,20 @@ const resultsDiv  = document.getElementById("search-results");
 const searchWrapper = document.getElementById("search-carousel-wrapper");
 const infoBtn     = document.getElementById("info-btn");
 
+let currentToken = null;
+
+// Wraps a Spotify API fetch with a single automatic retry on 401 —
+// the cached token can go stale if this tab is left open past its
+// ~1 hour lifetime, so a 401 forces a fresh one rather than failing outright.
+async function spotifyGet(url) {
+  let res = await fetch(url, { headers: { Authorization: `Bearer ${currentToken}` } });
+  if (res.status === 401) {
+    currentToken = await getSpotifyToken(true);
+    res = await fetch(url, { headers: { Authorization: `Bearer ${currentToken}` } });
+  }
+  return res;
+}
+
 // ── Shared card renderer ─────────────────────────────────────────────────────
 
 function buildTrackCard(track) {
@@ -55,16 +69,22 @@ function buildTrackCard(track) {
 
 // ── Search ───────────────────────────────────────────────────────────────────
 
-async function searchTracks(token, query) {
+let searchRequestId = 0;
+
+async function searchTracks(query) {
+  const requestId = ++searchRequestId;
   try {
-    const res = await fetch(
-      `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=7`,
-      { headers: { Authorization: `Bearer ${token}` } }
+    const res = await spotifyGet(
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=7`
     );
     if (!res.ok) throw new Error("Search failed");
     const data = await res.json();
+    // A faster, more recent keystroke may have already resolved — ignore
+    // this response if it's no longer the latest search in flight.
+    if (requestId !== searchRequestId) return;
     displaySearchResults(data.tracks.items);
   } catch (err) {
+    if (requestId !== searchRequestId) return;
     console.error("Search error:", err);
     resultsDiv.innerHTML = "<p>Error searching for tracks.</p>";
   }
@@ -87,7 +107,7 @@ function displaySearchResults(tracks) {
 
 // ── Trending ─────────────────────────────────────────────────────────────────
 
-async function fetchTrendingTracks(token) {
+async function fetchTrendingTracks() {
   // Check cache first
   try {
     const cached = JSON.parse(localStorage.getItem(TRENDING_CACHE_KEY) || "null");
@@ -118,9 +138,8 @@ async function fetchTrendingTracks(token) {
       const t = queue[idx++];
       try {
         const q = `track:"${t.name}" artist:"${t.artist?.name || ""}"`;
-        const res = await fetch(
-          `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=1`,
-          { headers: { Authorization: `Bearer ${token}` } }
+        const res = await spotifyGet(
+          `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=1`
         );
         const data = await res.json();
         const item = data?.tracks?.items?.[0];
@@ -139,13 +158,13 @@ async function fetchTrendingTracks(token) {
   return resolved;
 }
 
-async function loadTrending(token) {
+async function loadTrending() {
   const loadingEl = document.getElementById("trending-loading");
   const wrapper   = document.getElementById("trending-carousel-wrapper");
   const carousel  = document.getElementById("trending-results");
 
   try {
-    const tracks = await fetchTrendingTracks(token);
+    const tracks = await fetchTrendingTracks();
     if (loadingEl) loadingEl.style.display = "none";
 
     if (!tracks.length) {
@@ -222,10 +241,25 @@ function updateCarouselButtons(carousel, leftBtn, rightBtn) {
     rightBtn.style.display = carousel.clientWidth >= carousel.scrollWidth - 1 ? "none" : "block";
   };
   update();
-  carousel.addEventListener("scroll", update);
-  window.addEventListener("resize", update);
-  leftBtn.addEventListener("click",  () => carousel.scrollBy({ left: -320, behavior: "smooth" }));
-  rightBtn.addEventListener("click", () => carousel.scrollBy({ left:  320, behavior: "smooth" }));
+
+  // This runs every time a carousel re-renders (every search keystroke,
+  // every Recently Viewed tab click) but the button/carousel elements are
+  // persistent nodes — only wire listeners once per node or they'd stack.
+  if (!carousel.dataset.scrollWired) {
+    carousel.dataset.scrollWired = "1";
+    carousel.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+  }
+
+  if (!leftBtn.dataset.clickWired) {
+    leftBtn.dataset.clickWired = "1";
+    leftBtn.addEventListener("click",  () => carousel.scrollBy({ left: -320, behavior: "smooth" }));
+  }
+
+  if (!rightBtn.dataset.clickWired) {
+    rightBtn.dataset.clickWired = "1";
+    rightBtn.addEventListener("click", () => carousel.scrollBy({ left:  320, behavior: "smooth" }));
+  }
 }
 
 // ── Info modal ───────────────────────────────────────────────────────────────
@@ -258,9 +292,8 @@ function initInfoModal() {
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 async function init() {
-  let token;
   try {
-    token = await getSpotifyToken();
+    currentToken = await getSpotifyToken();
   } catch (err) {
     console.error("Could not obtain Spotify token:", err);
     resultsDiv.innerHTML = "<p>Unable to connect to Spotify. Please try again later.</p>";
@@ -273,14 +306,14 @@ async function init() {
   searchBtn.addEventListener("click", () => {
     clearTimeout(searchDebounce);
     const q = searchInput.value.trim();
-    if (q) searchTracks(token, q);
+    if (q) searchTracks(q);
   });
 
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       clearTimeout(searchDebounce);
       const q = searchInput.value.trim();
-      if (q) searchTracks(token, q);
+      if (q) searchTracks(q);
     }
   });
 
@@ -294,12 +327,12 @@ async function init() {
       return;
     }
 
-    searchDebounce = setTimeout(() => searchTracks(token, q), 300);
+    searchDebounce = setTimeout(() => searchTracks(q), 300);
   });
 
   initTabs();
   initInfoModal();
-  loadTrending(token);
+  loadTrending();
 }
 
 init();

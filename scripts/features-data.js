@@ -1,4 +1,6 @@
 // features-data.js
+import { getSpotifyToken } from "./auth.js";
+
 export const RECCOBEATS_BASE = "https://api.reccobeats.com/v1";
 export const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
 
@@ -24,9 +26,19 @@ function spotifySearchEscape(s) {
 }
 
 export async function spotifyFetch(token, url) {
-    const res = await fetch(url, {
+    let res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
     });
+
+    // A cached token can go stale if the page has been open a while —
+    // Spotify Client Credentials tokens last ~1 hour. Self-heal once
+    // by forcing a fresh token and retrying before giving up.
+    if (res.status === 401) {
+        const freshToken = await getSpotifyToken(true);
+        res = await fetch(url, {
+            headers: { Authorization: `Bearer ${freshToken}` },
+        });
+    }
 
     if (!res.ok) {
         const text = await res.text();

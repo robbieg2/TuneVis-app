@@ -3,13 +3,15 @@ const TOKEN_ENDPOINT = "/api/token";
 const RECENT_KEY = "tunevis_recent";
 const RECENT_LIMIT = 10;
 
-export async function getSpotifyToken() {
-  const cached = localStorage.getItem("spotify_cc_token");
-  if (cached) {
-    try {
-      const { access_token, expires_at } = JSON.parse(cached);
-      if (access_token && Date.now() < expires_at - 60_000) return access_token;
-    } catch {}
+export async function getSpotifyToken(forceRefresh = false) {
+  if (!forceRefresh) {
+    const cached = localStorage.getItem("spotify_cc_token");
+    if (cached) {
+      try {
+        const { access_token, expires_at } = JSON.parse(cached);
+        if (access_token && Date.now() < expires_at - 60_000) return access_token;
+      } catch {}
+    }
   }
   const res = await fetch(TOKEN_ENDPOINT);
   if (!res.ok) throw new Error(`Token endpoint responded ${res.status}`);
@@ -23,9 +25,13 @@ export async function getSpotifyToken() {
 // track: { id, name, artists (string[]), image }
 export function saveToRecent(track) {
   if (!track?.id) return;
-  const existing = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
-  const filtered = existing.filter(t => t.id !== track.id);
-  localStorage.setItem(RECENT_KEY, JSON.stringify([track, ...filtered].slice(0, RECENT_LIMIT)));
+  try {
+    const existing = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    const filtered = Array.isArray(existing) ? existing.filter(t => t?.id !== track.id) : [];
+    localStorage.setItem(RECENT_KEY, JSON.stringify([track, ...filtered].slice(0, RECENT_LIMIT)));
+  } catch (err) {
+    console.error("Could not save to recent:", err);
+  }
 }
 
 export function getRecent() {

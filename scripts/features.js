@@ -433,13 +433,21 @@ async function openArtistModal(artistId, artistName, token) {
     `;
     document.body.appendChild(modal);
 
+    // Captured directly rather than re-queried by id after the await below —
+    // if the user clicks a second artist before this fetch resolves, a stale
+    // response must not be able to write into whatever modal is now open.
+    const listEl = modal.querySelector("#artist-tracks-list");
+
     modal.querySelector(".site-info-close").addEventListener("click", () => modal.remove());
     modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
 
     try {
         const data = await spotifyFetch(token, `https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=GB`);
+        // This modal may have been closed/replaced while the fetch was in flight.
+        if (!document.body.contains(modal)) return;
+
         const tracks = (data?.tracks || []).slice(0, 8);
-        const list = document.getElementById("artist-tracks-list");
+        const list = listEl;
         if (!list) return;
 
         if (!tracks.length) {
@@ -472,8 +480,8 @@ async function openArtistModal(artistId, artistName, token) {
             list.appendChild(item);
         });
     } catch (err) {
-        const list = document.getElementById("artist-tracks-list");
-        if (list) list.innerHTML = `<p class="muted">Could not load tracks.</p>`;
+        if (!document.body.contains(modal)) return;
+        if (listEl) listEl.innerHTML = `<p class="muted">Could not load tracks.</p>`;
     }
 }
 

@@ -16,6 +16,18 @@ async function ensureToken() {
     return token;
 }
 
+// A cached token can go stale on a long-open tab — Spotify Client
+// Credentials tokens last ~1 hour. Self-heal once before giving up.
+async function spotifyGet(url) {
+    const t = await ensureToken();
+    let res = await fetch(url, { headers: { Authorization: `Bearer ${t}` } });
+    if (res.status === 401) {
+        token = await getSpotifyToken(true);
+        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    }
+    return res;
+}
+
 function resultCard({ type, id, name, subtitle, image }) {
     const card = document.createElement("div");
     card.className = "rank-result-card";
@@ -32,18 +44,20 @@ function resultCard({ type, id, name, subtitle, image }) {
     return card;
 }
 
+let searchRequestId = 0;
+
 async function doSearch(query) {
     resultsEl.innerHTML = `<p class="tab-loading">Searching…</p>`;
+    const requestId = ++searchRequestId;
 
     try {
-        const t = await ensureToken();
         const url = new URL("https://api.spotify.com/v1/search");
         url.searchParams.set("q", query);
         url.searchParams.set("type", "artist,album");
         // Fetch extra album results up front since many will be filtered out below
         url.searchParams.set("limit", "20");
 
-        const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${t}` } });
+        const res = await spotifyGet(url.toString());
         if (!res.ok) throw new Error(`Search failed: ${res.status}`);
         const data = await res.json();
 
@@ -56,6 +70,10 @@ async function doSearch(query) {
         const albums = (data?.albums?.items || [])
             .filter(al => (al.total_tracks || 0) >= MIN_ALBUM_TRACKS)
             .slice(0, 8);
+
+        // A faster, more recent keystroke may have already resolved —
+        // ignore this response if it's no longer the latest search in flight.
+        if (requestId !== searchRequestId) return;
 
         resultsEl.innerHTML = "";
 
@@ -102,6 +120,7 @@ async function doSearch(query) {
             resultsEl.appendChild(group);
         }
     } catch (err) {
+        if (requestId !== searchRequestId) return;
         console.error(err);
         resultsEl.innerHTML = `<p class="tab-empty">Something went wrong searching. Try again.</p>`;
     }

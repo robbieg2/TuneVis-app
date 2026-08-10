@@ -56,7 +56,15 @@ function syncUrl() {
 
 // ── Data fetching ──────────────────────────────────────────────────────
 async function spotifyFetch(token, url) {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+
+    // A cached token can go stale on a long-open tab — Spotify Client
+    // Credentials tokens last ~1 hour. Self-heal once before giving up.
+    if (res.status === 401) {
+        cachedToken = await getSpotifyToken(true);
+        res = await fetch(url, { headers: { Authorization: `Bearer ${cachedToken}` } });
+    }
+
     if (!res.ok) throw new Error(`Spotify fetch failed: ${res.status}`);
     return res.json();
 }
@@ -369,8 +377,11 @@ function markSearchRowAdded(rowEl) {
     }
 }
 
+let searchRequestId = 0;
+
 async function fetchSearchResults(query) {
     if (!cachedToken || !trackSearchSuggestions) return;
+    const requestId = ++searchRequestId;
 
     try {
         // Search 1: tracks whose title matches, scoped to this artist
@@ -433,8 +444,12 @@ async function fetchSearchResults(query) {
             return true;
         }).slice(0, 12);
 
+        // A faster, more recent keystroke may have already resolved —
+        // ignore this response if it's no longer the latest search in flight.
+        if (requestId !== searchRequestId) return;
         renderSearchResults(combined);
     } catch (err) {
+        if (requestId !== searchRequestId) return;
         console.error(err);
         hideSuggestions();
     }
