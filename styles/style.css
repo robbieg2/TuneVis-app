@@ -330,6 +330,22 @@ header.logo .logo-title {
     padding: 0 20px;
 }
 
+.general-rank-cta {
+    max-width: 480px;
+    margin: 8px auto 40px;
+    padding: 22px 24px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+}
+
+.general-rank-cta p {
+    margin: 0 0 12px;
+    opacity: 0.8;
+    font-size: 14px;
+}
+
 .rank-result-group {
     margin-bottom: 28px;
 }
@@ -470,6 +486,22 @@ header.logo .logo-title {
     justify-content: center;
     gap: 10px;
     margin: 20px 0 8px;
+}
+
+.rank-mode-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 22px 0 4px;
+}
+
+.general-head {
+    text-align: center;
+    justify-content: center;
+}
+
+.general-head .rank-head-sub {
+    max-width: 480px;
 }
 
 .rank-mobile-tabs {
@@ -684,6 +716,10 @@ header.logo .logo-title {
     border-radius: 5px;
     object-fit: cover;
     flex-shrink: 0;
+}
+
+.track-row-img.round {
+    border-radius: 50%;
 }
 
 .track-row-meta {

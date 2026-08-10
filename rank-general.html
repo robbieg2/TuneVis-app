@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TuneVis — My Rankings</title>
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+<body class="page-flex">
+  <div class="bg-layer">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+    <div class="bg-circle c4"></div>
+  </div>
+
+  <header class="features-header">
+    <button id="back-btn" aria-label="Back">&#8592;</button>
+
+    <a href="home.html" class="header-logo-link" title="TuneVis home">
+      <div class="header-logo-inner">
+        <svg class="header-logo-bars" viewBox="0 0 80 34" preserveAspectRatio="xMidYMid meet">
+          <g class="audio-bars">
+            <rect x="4"  y="13" width="5" height="8"  rx="2.5"/>
+            <rect x="15" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="26" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="37" y="2"  width="5" height="30" rx="2.5"/>
+            <rect x="48" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="59" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="70" y="13" width="5" height="8"  rx="2.5"/>
+          </g>
+        </svg>
+        <span class="header-logo-text">TuneVis</span>
+      </div>
+    </a>
+
+    <button id="share-btn">Copy link</button>
+  </header>
+
+  <div id="rank-page-loading" class="loading-overlay">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-title">Loading...</div>
+      <div class="loading-sub">Fetching popular picks from Spotify</div>
+    </div>
+  </div>
+
+  <div id="rank-page" style="display:none;">
+    <div class="rank-head general-head">
+      <div>
+        <h1 class="rank-head-name">My Rankings</h1>
+        <p class="rank-head-sub">Build your own personal top artists or top tracks</p>
+      </div>
+    </div>
+
+    <div class="rank-mode-toggle" id="rank-mode-toggle">
+      <button class="tab-btn active" data-mode="artist">Favourite Artists</button>
+      <button class="tab-btn" data-mode="track">Favourite Tracks</button>
+    </div>
+
+    <div class="rank-filter-toggle" id="rank-filter-toggle"></div>
+
+    <div class="rank-mobile-tabs">
+      <button class="tab-btn active" data-panel="tracks">Popular</button>
+      <button class="tab-btn" data-panel="ranking">Your ranking</button>
+    </div>
+
+    <div class="rank-columns">
+      <section class="rank-panel" id="rank-panel-tracks">
+        <p class="rank-panel-title" id="rank-panel-tracks-title">Popular artists</p>
+        <div class="track-search" id="track-search">
+          <div class="track-search-input-wrap">
+            <input type="text" id="track-search-input" placeholder="Search for an artist..." autocomplete="off" />
+            <div class="track-search-suggestions" id="track-search-suggestions"></div>
+          </div>
+          <button id="track-search-btn">Search</button>
+        </div>
+        <div class="track-list" id="track-list"></div>
+      </section>
+
+      <section class="rank-panel" id="rank-panel-ranking">
+        <div class="rank-panel-title-row">
+          <p class="rank-panel-title" id="rank-panel-ranking-title">Your ranking</p>
+          <button id="clear-rank-btn" class="clear-rank-btn" type="button">Clear rankings</button>
+        </div>
+        <div class="rank-list" id="rank-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <p>TuneVis | Built using Spotify API, ReccoBeats &amp; Last.fm API</p>
+  </footer>
+
+  <script type="module" src="scripts/rank-general.js"></script>
+</body>
+</html>
