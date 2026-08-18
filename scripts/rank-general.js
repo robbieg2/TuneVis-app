@@ -1,5 +1,6 @@
 // rank-general.js — personal "favourite artists" / "favourite tracks" rankings
 import { getSpotifyToken } from "./auth.js";
+import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
@@ -20,6 +21,8 @@ const trackSearchInput = document.getElementById("track-search-input");
 const trackSearchBtn = document.getElementById("track-search-btn");
 const trackSearchSuggestions = document.getElementById("track-search-suggestions");
 const genreSelect = document.getElementById("genre-select");
+const listNameInput = document.getElementById("list-name-input");
+const exportBtn = document.getElementById("export-btn");
 
 let cachedToken = null;
 let suggestDebounce = null;
@@ -36,11 +39,16 @@ let pool = [];              // lookup: id -> { id, name, subtitle, image }
 let leftPanelItems = [];    // popular items shown on the left
 let rankSize = 5;
 let rankedIds = [];
+let listName = "";
 
 const modeState = {
-    artist: null, // { rankSize, rankedIds, pool, leftPanelItems, genre }
+    artist: null, // { rankSize, rankedIds, pool, leftPanelItems, genre, listName }
     track: null,
 };
+
+function defaultListName() {
+    return mode === "artist" ? "My Favourite Artists" : "My Favourite Tracks";
+}
 
 function saveActiveModeState() {
     modeState[mode] = {
@@ -49,6 +57,7 @@ function saveActiveModeState() {
         pool: pool.slice(),
         leftPanelItems: leftPanelItems.slice(),
         genre,
+        listName,
     };
 }
 
@@ -73,6 +82,7 @@ function getParams() {
         genre: g && VALID_GENRES.has(g) ? g : null,
         size: p.get("size") ? Number(p.get("size")) : null,
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
+        name: p.get("name") || null,
     };
 }
 
@@ -82,7 +92,24 @@ function syncUrl() {
     p.set("genre", genre);
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
+    if (listName) p.set("name", listName);
     history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
+}
+
+function initListName() {
+    if (!listNameInput) return;
+    listNameInput.value = listName;
+    listNameInput.addEventListener("input", () => {
+        listName = listNameInput.value;
+        syncUrl();
+    });
+    listNameInput.addEventListener("blur", () => {
+        if (!listNameInput.value.trim()) {
+            listName = defaultListName();
+            listNameInput.value = listName;
+            syncUrl();
+        }
+    });
 }
 
 // ── Data fetching ──────────────────────────────────────────────────────
@@ -348,14 +375,18 @@ async function switchMode(newMode) {
         pool = saved.pool.slice();
         leftPanelItems = saved.leftPanelItems.slice();
         genre = saved.genre;
+        listName = saved.listName;
         if (genreSelect) genreSelect.value = genre;
+        if (listNameInput) listNameInput.value = listName;
         renderAll();
     } else {
         trackListEl.innerHTML = `<p class="tab-loading">Loading…</p>`;
         rankSize = 5;
         rankedIds = [];
         genre = "all";
+        listName = defaultListName();
         if (genreSelect) genreSelect.value = genre;
+        if (listNameInput) listNameInput.value = listName;
         leftPanelItems = await loadPopularPool(mode, genre);
         pool = leftPanelItems.slice();
         renderAll();
@@ -431,6 +462,84 @@ function initClearButton() {
         renderAll();
         syncUrl();
     });
+}
+
+// ── Export ────────────────────────────────────────────────────────────
+function getRankedItemsForExport() {
+    return rankedIds
+        .map(id => pool.find(p => p.id === id))
+        .filter(Boolean)
+        .map(p => ({ name: p.name, subtitle: p.subtitle || "", image: p.image }));
+}
+
+function initExport() {
+    if (!exportBtn) return;
+    exportBtn.addEventListener("click", openExportModal);
+}
+
+async function openExportModal() {
+    const items = getRankedItemsForExport();
+    if (!items.length) {
+        alert(`Add at least one ${mode === "artist" ? "artist" : "track"} to your ranking before exporting.`);
+        return;
+    }
+
+    document.getElementById("export-modal")?.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "export-modal";
+    modal.className = "site-info-modal open";
+    modal.innerHTML = `
+        <div class="site-info-card export-modal-card">
+            <button class="site-info-close" aria-label="Close">X</button>
+            <h2>Export your ranking</h2>
+            <div class="export-preview-wrap" id="export-preview-wrap">
+                <p class="tab-loading">Rendering preview…</p>
+            </div>
+            <div class="export-actions">
+                <button id="export-download-btn" type="button">Download image</button>
+                <button id="export-copy-btn" type="button">Copy as text</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector(".site-info-close").addEventListener("click", () => modal.remove());
+    modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+    const subtitle = mode === "artist" ? "My Favourite Artists" : "My Favourite Tracks";
+    const exportData = { title: listName || defaultListName(), subtitle, items };
+
+    document.getElementById("export-copy-btn")?.addEventListener("click", async () => {
+        try {
+            await copyText(buildRankingText(exportData));
+            const btn = document.getElementById("export-copy-btn");
+            const original = btn.textContent;
+            btn.textContent = "Copied";
+            setTimeout(() => (btn.textContent = original), 1600);
+        } catch {
+            alert("Couldn't copy automatically — please copy the text manually.");
+        }
+    });
+
+    try {
+        const canvas = await buildRankingImage(exportData);
+        const previewWrap = document.getElementById("export-preview-wrap");
+        if (previewWrap) {
+            previewWrap.innerHTML = "";
+            canvas.className = "export-preview-canvas";
+            previewWrap.appendChild(canvas);
+        }
+        document.getElementById("export-download-btn")?.addEventListener("click", () => {
+            downloadCanvas(canvas, `${(listName || defaultListName()).replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`);
+        });
+    } catch (err) {
+        console.error(err);
+        const previewWrap = document.getElementById("export-preview-wrap");
+        if (previewWrap) previewWrap.innerHTML = `<p class="muted">Couldn't render an image preview — you can still copy the ranking as text.</p>`;
+        const downloadBtn = document.getElementById("export-download-btn");
+        if (downloadBtn) downloadBtn.disabled = true;
+    }
 }
 
 // ── Search ────────────────────────────────────────────────────────────
@@ -611,6 +720,8 @@ async function init() {
         mode = params.mode || "artist";
         genre = params.genre || "all";
         rankSize = params.size && SIZE_OPTIONS.some(o => o.value === params.size) ? params.size : 5;
+        listName = params.name || defaultListName();
+        if (listNameInput) listNameInput.value = listName;
 
         document.querySelectorAll("#rank-mode-toggle .tab-btn").forEach(btn => {
             btn.classList.toggle("active", btn.dataset.mode === mode);
@@ -636,6 +747,8 @@ async function init() {
         initShare();
         initClearButton();
         initTrackSearch();
+        initListName();
+        initExport();
 
         loadingEl.style.display = "none";
         pageEl.style.display = "block";

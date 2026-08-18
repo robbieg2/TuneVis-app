@@ -1,8 +1,11 @@
 // rank.js — artist / album ranking workspace
 import { getSpotifyToken } from "./auth.js";
+import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 
 const backBtn = document.getElementById("back-btn");
 const shareBtn = document.getElementById("share-btn");
+const listNameInput = document.getElementById("list-name-input");
+const exportBtn = document.getElementById("export-btn");
 const loadingEl = document.getElementById("rank-page-loading");
 const pageEl = document.getElementById("rank-page");
 const headEl = document.getElementById("rank-head");
@@ -28,6 +31,7 @@ let leftPanelTracks = [];    // subset actually rendered in the left tracklist c
 let sizeOptions = [];        // [{ label, value }]
 let rankSize = 5;
 let rankedIds = [];          // ordered array of track ids, length <= rankSize
+let listName = "";           // user-editable title for this ranking, used in exports
 
 function addToPool(track) {
     if (!allTracks.some(t => t.id === track.id)) {
@@ -42,6 +46,7 @@ function getParams() {
         id: p.get("id"),
         size: p.get("size") ? Number(p.get("size")) : null,
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
+        name: p.get("name") || null,
     };
 }
 
@@ -51,7 +56,28 @@ function syncUrl() {
     p.set("id", meta.id);
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
+    if (listName) p.set("name", listName);
     history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
+}
+
+function defaultListName() {
+    return meta.type === "album" ? `${meta.name} Ranking` : `${meta.name} Top Tracks`;
+}
+
+function initListName() {
+    if (!listNameInput) return;
+    listNameInput.value = listName;
+    listNameInput.addEventListener("input", () => {
+        listName = listNameInput.value;
+        syncUrl();
+    });
+    listNameInput.addEventListener("blur", () => {
+        if (!listNameInput.value.trim()) {
+            listName = defaultListName();
+            listNameInput.value = listName;
+            syncUrl();
+        }
+    });
 }
 
 // ── Data fetching ──────────────────────────────────────────────────────
@@ -319,6 +345,84 @@ function initClearButton() {
     });
 }
 
+// ── Export ────────────────────────────────────────────────────────────
+function getRankedItemsForExport() {
+    return rankedIds
+        .map(id => allTracks.find(t => t.id === id))
+        .filter(Boolean)
+        .map(t => ({ name: t.name, subtitle: (t.artists || []).join(", "), image: t.image }));
+}
+
+function initExport() {
+    if (!exportBtn) return;
+    exportBtn.addEventListener("click", openExportModal);
+}
+
+async function openExportModal() {
+    const items = getRankedItemsForExport();
+    if (!items.length) {
+        alert("Add at least one track to your ranking before exporting.");
+        return;
+    }
+
+    document.getElementById("export-modal")?.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "export-modal";
+    modal.className = "site-info-modal open";
+    modal.innerHTML = `
+        <div class="site-info-card export-modal-card">
+            <button class="site-info-close" aria-label="Close">X</button>
+            <h2>Export your ranking</h2>
+            <div class="export-preview-wrap" id="export-preview-wrap">
+                <p class="tab-loading">Rendering preview…</p>
+            </div>
+            <div class="export-actions">
+                <button id="export-download-btn" type="button">Download image</button>
+                <button id="export-copy-btn" type="button">Copy as text</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector(".site-info-close").addEventListener("click", () => modal.remove());
+    modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+    const subtitle = meta.type === "album" ? meta.subtitle : "Top Tracks";
+    const exportData = { title: listName || defaultListName(), subtitle, items };
+
+    document.getElementById("export-copy-btn")?.addEventListener("click", async () => {
+        try {
+            await copyText(buildRankingText(exportData));
+            const btn = document.getElementById("export-copy-btn");
+            const original = btn.textContent;
+            btn.textContent = "Copied";
+            setTimeout(() => (btn.textContent = original), 1600);
+        } catch {
+            alert("Couldn't copy automatically — please copy the text manually.");
+        }
+    });
+
+    try {
+        const canvas = await buildRankingImage(exportData);
+        const previewWrap = document.getElementById("export-preview-wrap");
+        if (previewWrap) {
+            previewWrap.innerHTML = "";
+            canvas.className = "export-preview-canvas";
+            previewWrap.appendChild(canvas);
+        }
+        document.getElementById("export-download-btn")?.addEventListener("click", () => {
+            downloadCanvas(canvas, `${(listName || defaultListName()).replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`);
+        });
+    } catch (err) {
+        console.error(err);
+        const previewWrap = document.getElementById("export-preview-wrap");
+        if (previewWrap) previewWrap.innerHTML = `<p class="muted">Couldn't render an image preview — you can still copy the ranking as text.</p>`;
+        const downloadBtn = document.getElementById("export-download-btn");
+        if (downloadBtn) downloadBtn.disabled = true;
+    }
+}
+
 // ── Extra catalog search (artists only — deep cuts beyond top tracks) ──
 function initTrackSearch() {
     if (meta.type !== "artist" || !trackSearchEl) return;
@@ -488,7 +592,7 @@ function renderSearchResults(results) {
 
 // ── Init ───────────────────────────────────────────────────────────────
 async function init() {
-    const { type, id, size, order } = getParams();
+    const { type, id, size, order, name } = getParams();
 
     if (!type || !id || (type !== "artist" && type !== "album")) {
         loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">No artist or album selected</div><div class="loading-sub">Go back and search for one to rank.</div></div>`;
@@ -510,6 +614,7 @@ async function init() {
 
         rankSize = size && sizeOptions.some(o => o.value === size) ? size : sizeOptions[0].value;
         rankedIds = order.filter(oid => allTracks.some(t => t.id === oid)).slice(0, rankSize);
+        listName = name || defaultListName();
 
         renderHead();
         renderAll();
@@ -517,6 +622,8 @@ async function init() {
         initShare();
         initTrackSearch();
         initClearButton();
+        initListName();
+        initExport();
 
         loadingEl.style.display = "none";
         pageEl.style.display = "block";
