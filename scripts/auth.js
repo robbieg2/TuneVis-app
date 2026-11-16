@@ -38,3 +38,15 @@ export function getRecent() {
   try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); }
   catch { return []; }
 }
+
+// Escape text before interpolating it into an innerHTML template. Track,
+// artist and album names come from Spotify/Last.fm (and on features.html
+// straight from the URL), so they must never be treated as markup.
+export function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

@@ -1,5 +1,5 @@
 // rank-general.js — personal "favourite artists" / "favourite tracks" rankings
-import { getSpotifyToken } from "./auth.js";
+import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
@@ -263,10 +263,10 @@ function itemRow(item) {
     const row = document.createElement("div");
     row.className = "track-row" + (isRanked ? " added" : "");
     row.innerHTML = `
-        ${item.image ? `<img class="track-row-img ${mode === "artist" ? "round" : ""}" src="${item.image}" alt="">` : `<div class="track-row-img rank-result-placeholder ${mode === "artist" ? "round" : ""}"></div>`}
+        ${item.image ? `<img class="track-row-img ${mode === "artist" ? "round" : ""}" src="${esc(item.image)}" alt="">` : `<div class="track-row-img rank-result-placeholder ${mode === "artist" ? "round" : ""}"></div>`}
         <div class="track-row-meta">
-            <span class="track-row-name">${item.name}</span>
-            <span class="track-row-sub">${item.subtitle || ""}</span>
+            <span class="track-row-name">${esc(item.name)}</span>
+            <span class="track-row-sub">${esc(item.subtitle)}</span>
         </div>
         ${isRanked
             ? `<span class="track-row-check" aria-hidden="true">&#10003;</span>`
@@ -304,10 +304,10 @@ function rankRow(itemId, index) {
 
     row.innerHTML = `
         <span class="rank-row-num">${index + 1}</span>
-        ${item.image ? `<img class="track-row-img ${mode === "artist" ? "round" : ""}" src="${item.image}" alt="">` : ""}
+        ${item.image ? `<img class="track-row-img ${mode === "artist" ? "round" : ""}" src="${esc(item.image)}" alt="">` : ""}
         <div class="track-row-meta">
-            <span class="track-row-name">${item.name}</span>
-            <span class="track-row-sub">${item.subtitle || ""}</span>
+            <span class="track-row-name">${esc(item.name)}</span>
+            <span class="track-row-sub">${esc(item.subtitle)}</span>
         </div>
         <div class="rank-row-controls">
             <button class="rank-row-move" data-dir="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}>&#9650;</button>
@@ -664,10 +664,10 @@ function renderSearchResults(results) {
         const row = document.createElement("div");
         row.className = "track-suggestion";
         row.innerHTML = `
-            ${item.image ? `<img class="track-suggestion-img" src="${item.image}" alt="">` : ""}
+            ${item.image ? `<img class="track-suggestion-img" src="${esc(item.image)}" alt="">` : ""}
             <div class="track-suggestion-meta">
-                <span class="track-suggestion-name">${item.name}</span>
-                <span class="track-suggestion-sub">${item.subtitle || ""}</span>
+                <span class="track-suggestion-name">${esc(item.name)}</span>
+                <span class="track-suggestion-sub">${esc(item.subtitle)}</span>
             </div>
             <button class="track-suggestion-add" ${isRanked || isFull ? "disabled" : ""}>${isRanked ? "Added" : "+"}</button>
         `;

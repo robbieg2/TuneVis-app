@@ -1,5 +1,5 @@
 // rankings.js — search for an artist or album, hand off to rank.html
-import { getSpotifyToken } from "./auth.js";
+import { getSpotifyToken, esc } from "./auth.js";
 
 const backBtn = document.getElementById("back-btn");
 const searchInput = document.getElementById("rankings-search-input");
@@ -32,10 +32,10 @@ function resultCard({ type, id, name, subtitle, image }) {
     const card = document.createElement("div");
     card.className = "rank-result-card";
     card.innerHTML = `
-        ${image ? `<img class="rank-result-img ${type === "artist" ? "round" : ""}" src="${image}" alt="">` : `<div class="rank-result-img rank-result-placeholder ${type === "artist" ? "round" : ""}"></div>`}
+        ${image ? `<img class="rank-result-img ${type === "artist" ? "round" : ""}" src="${esc(image)}" alt="">` : `<div class="rank-result-img rank-result-placeholder ${type === "artist" ? "round" : ""}"></div>`}
         <div class="rank-result-meta">
-            <span class="rank-result-name">${name}</span>
-            <span class="rank-result-sub">${subtitle}</span>
+            <span class="rank-result-name">${esc(name)}</span>
+            <span class="rank-result-sub">${esc(subtitle)}</span>
         </div>
     `;
     card.addEventListener("click", () => {
@@ -78,7 +78,7 @@ async function doSearch(query) {
         resultsEl.innerHTML = "";
 
         if (!artists.length && !albums.length) {
-            resultsEl.innerHTML = `<p class="tab-empty">No artists or albums found for "${query}"</p>`;
+            resultsEl.innerHTML = `<p class="tab-empty">No artists or albums found for "${esc(query)}"</p>`;
             return;
         }
 

@@ -1,3 +1,5 @@
+import { esc } from "./auth.js";
+
 // features-charts.js
 function cssSafeId(id) {
 	return String(id || "")
@@ -93,8 +95,8 @@ function buildTooltipHtml(r) {
 	const closestText = closest.length ? closest.join(" • ") : "-";
 
 	return `
-		<div class="tt-title">${name}</div>
-		<div class="tt-sub">${artists}</div>
+		<div class="tt-title">${esc(name)}</div>
+		<div class="tt-sub">${esc(artists)}</div>
 		<div class="tt-row"><span class="tt-muted">Similarity Score</span><span>${simPct ?? "-"}%</span></div>
 		<div class="tt-row"><span class="tt-muted">Closest Features</span><span>${closestText}</span></div>
 	`;
@@ -599,8 +601,8 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
 				};
 				
 				showTooltip(`
-					<div class="tt-title">${name}</div>
-					<div class="tt-sub">${artists}</div>
+					<div class="tt-title">${esc(name)}</div>
+					<div class="tt-sub">${esc(artists)}</div>
 					
 					<div class="tt-row">
 						<span class="tt-muted">${xKey.toUpperCase()}</span>

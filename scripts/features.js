@@ -16,7 +16,7 @@ import {
 	drawSimilarityScatter
 } from "./features-charts.js";
 
-import { getSpotifyToken, saveToRecent } from "./auth.js";
+import { getSpotifyToken, saveToRecent, esc } from "./auth.js";
 
 const trackInfo = document.getElementById("track-info");
 const backBtn = document.getElementById("back-btn");
@@ -34,20 +34,20 @@ function setLoading(on, sub = "") {
 // Track header with embed	
 function renderTrackHeader(track) {
     const artistSpans = (track.artists || [])
-        .map(a => `<span class="artist-link" data-artist-name="${a}">${a}</span>`)
+        .map(a => `<span class="artist-link" data-artist-name="${esc(a)}">${esc(a)}</span>`)
         .join(", ");
 
     trackInfo.innerHTML = `
         <div class="seed-header">
-            ${track.image ? `<img class="seed-cover" src="${track.image}" alt="Album cover">` : ""}
+            ${track.image ? `<img class="seed-cover" src="${esc(track.image)}" alt="Album cover">` : ""}
 
             <div class="seed-meta">
-                <h1 class="seed-title">${track.name}</h1>
+                <h1 class="seed-title">${esc(track.name)}</h1>
                 <p class="seed-artists">${artistSpans}</p>
 
                 <iframe
                     class="seed-embed"
-                    src="https://open.spotify.com/embed/track/${track.id}"
+                    src="https://open.spotify.com/embed/track/${esc(track.id)}"
                     frameborder="0"
                     allowtransparency="true"
                     allow="encrypted-media">
@@ -257,7 +257,7 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 		card.innerHTML = `
 			${scorePct != null ? `<div class="score-badge">${scorePct}% match</div>` : ""}
 			<iframe
-				src="https://open.spotify.com/embed/track/${id}"
+				src="https://open.spotify.com/embed/track/${esc(id)}"
 				width="100%"
 				height="153"
 				frameborder="0"
@@ -424,7 +424,7 @@ async function openArtistModal(artistId, artistName, token) {
     modal.innerHTML = `
         <div class="site-info-card artist-modal-card">
             <button class="site-info-close" aria-label="Close">X</button>
-            <h2 class="artist-modal-name">${artistName}</h2>
+            <h2 class="artist-modal-name">${esc(artistName)}</h2>
             <p class="muted artist-modal-sub">Top Tracks</p>
             <div class="artist-tracks-list" id="artist-tracks-list">
                 <p class="tab-loading">Loading…</p>
@@ -466,10 +466,10 @@ async function openArtistModal(artistId, artistName, token) {
             const item = document.createElement("div");
             item.className = "artist-track-item";
             item.innerHTML = `
-                ${trackMeta.image ? `<img class="artist-track-img" src="${trackMeta.image}" alt="Album art">` : ""}
+                ${trackMeta.image ? `<img class="artist-track-img" src="${esc(trackMeta.image)}" alt="Album art">` : ""}
                 <div class="artist-track-info">
-                    <span class="artist-track-name">${t.name}</span>
-                    <span class="artist-track-album">${t.album?.name || ""}</span>
+                    <span class="artist-track-name">${esc(t.name)}</span>
+                    <span class="artist-track-album">${esc(t.album?.name)}</span>
                 </div>
                 <button class="features-btn artist-analyse-btn">Analyse</button>
             `;

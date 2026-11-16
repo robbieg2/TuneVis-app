@@ -1,5 +1,5 @@
 // home.js
-import { getSpotifyToken, saveToRecent, getRecent } from "./auth.js";
+import { getSpotifyToken, saveToRecent, getRecent, esc } from "./auth.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const TRENDING_CACHE_KEY = "tunevis_trending_cache";
@@ -39,10 +39,10 @@ function buildTrackCard(track) {
   const div = document.createElement("div");
   div.className = "track-result";
   div.innerHTML = `
-    ${image ? `<img src="${image}" width="120" height="120" style="border-radius:10px;"><br/>` : ""}
-    <strong>${name}</strong><br/>
-    <em>${artists}</em><br/><br/>
-    <iframe src="https://open.spotify.com/embed/track/${id}"
+    ${image ? `<img src="${esc(image)}" width="120" height="120" style="border-radius:10px;"><br/>` : ""}
+    <strong>${esc(name)}</strong><br/>
+    <em>${esc(artists)}</em><br/><br/>
+    <iframe src="https://open.spotify.com/embed/track/${esc(id)}"
       width="300" height="80" frameborder="0"
       allowtransparency="true" allow="encrypted-media">
     </iframe>

@@ -1,5 +1,5 @@
 // rank.js — artist / album ranking workspace
-import { getSpotifyToken } from "./auth.js";
+import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 
 const backBtn = document.getElementById("back-btn");
@@ -147,13 +147,13 @@ async function loadAlbum(token, id) {
 // ── Rendering ──────────────────────────────────────────────────────────
 function renderHead() {
     headEl.innerHTML = `
-        ${meta.image ? `<img class="rank-head-img ${meta.type === "artist" ? "round" : ""}" src="${meta.image}" alt="">` : ""}
+        ${meta.image ? `<img class="rank-head-img ${meta.type === "artist" ? "round" : ""}" src="${esc(meta.image)}" alt="">` : ""}
         <div class="rank-head-meta">
             <div class="rank-head-name-row">
-                <h1 class="rank-head-name">${meta.name}</h1>
+                <h1 class="rank-head-name">${esc(meta.name)}</h1>
                 <button id="rank-play-btn" class="rank-play-btn" type="button" aria-label="Play">&#9654; Play</button>
             </div>
-            <p class="rank-head-sub">${meta.subtitle}</p>
+            <p class="rank-head-sub">${esc(meta.subtitle)}</p>
         </div>
     `;
 
@@ -174,7 +174,7 @@ function togglePlayer() {
     const embedPath = meta.type === "album" ? `album/${meta.id}` : `artist/${meta.id}`;
     playerWrapEl.innerHTML = `
         <iframe
-            src="https://open.spotify.com/embed/${embedPath}?theme=0"
+            src="https://open.spotify.com/embed/${esc(embedPath)}?theme=0"
             width="100%"
             height="380"
             frameborder="0"
@@ -208,10 +208,10 @@ function trackRow(track) {
     const row = document.createElement("div");
     row.className = "track-row" + (isRanked ? " added" : "");
     row.innerHTML = `
-        ${track.image ? `<img class="track-row-img" src="${track.image}" alt="">` : `<div class="track-row-img rank-result-placeholder"></div>`}
+        ${track.image ? `<img class="track-row-img" src="${esc(track.image)}" alt="">` : `<div class="track-row-img rank-result-placeholder"></div>`}
         <div class="track-row-meta">
-            <span class="track-row-name">${track.name}</span>
-            <span class="track-row-sub">${(track.artists || []).join(", ")}</span>
+            <span class="track-row-name">${esc(track.name)}</span>
+            <span class="track-row-sub">${esc((track.artists || []).join(", "))}</span>
         </div>
         ${isRanked
             ? `<span class="track-row-check" aria-hidden="true">&#10003;</span>`
@@ -255,10 +255,10 @@ function rankRow(trackId, index) {
 
     row.innerHTML = `
         <span class="rank-row-num">${index + 1}</span>
-        ${track.image ? `<img class="track-row-img" src="${track.image}" alt="">` : ""}
+        ${track.image ? `<img class="track-row-img" src="${esc(track.image)}" alt="">` : ""}
         <div class="track-row-meta">
-            <span class="track-row-name">${track.name}</span>
-            <span class="track-row-sub">${(track.artists || []).join(", ")}</span>
+            <span class="track-row-name">${esc(track.name)}</span>
+            <span class="track-row-sub">${esc((track.artists || []).join(", "))}</span>
         </div>
         <div class="rank-row-controls">
             <button class="rank-row-move" data-dir="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}>&#9650;</button>
@@ -573,10 +573,10 @@ function renderSearchResults(results) {
         const item = document.createElement("div");
         item.className = "track-suggestion";
         item.innerHTML = `
-            ${track.image ? `<img class="track-suggestion-img" src="${track.image}" alt="">` : ""}
+            ${track.image ? `<img class="track-suggestion-img" src="${esc(track.image)}" alt="">` : ""}
             <div class="track-suggestion-meta">
-                <span class="track-suggestion-name">${track.name}</span>
-                <span class="track-suggestion-sub">${track.sub || ""}</span>
+                <span class="track-suggestion-name">${esc(track.name)}</span>
+                <span class="track-suggestion-sub">${esc(track.sub)}</span>
             </div>
             <button class="track-suggestion-add" ${isRanked || isFull ? "disabled" : ""}>${isRanked ? "Added" : "+"}</button>
         `;
