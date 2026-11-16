@@ -155,3 +155,62 @@ $$;
 
 revoke all on function public.username_available(text) from public, anon;
 grant execute on function public.username_available(text) to authenticated;
+
+
+-- ===========================================================================
+-- Migration (Nov 2026): album star ratings and ranking folders
+-- On an existing database, run just this block (from here to the end of the file)
+-- in the SQL Editor.
+-- ===========================================================================
+
+-- An album ranking's overall star rating: 0.5 to 5 in half-star steps, or none.
+alter table public.rankings
+  add column rating numeric(2, 1)
+  check (rating is null
+         or (kind = 'album' and rating between 0.5 and 5 and rating * 2 = floor(rating * 2)));
+
+-- A user's folders of saved rankings, e.g. "Favourites", "2026 Releases".
+-- Names are unique per user, ignoring case.
+create table public.ranking_folders (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null default auth.uid()
+              references auth.users (id) on delete cascade,
+  name        text not null check (char_length(btrim(name)) between 1 and 40),
+  created_at  timestamptz not null default now()
+);
+create unique index ranking_folders_user_name on public.ranking_folders (user_id, lower(btrim(name)));
+
+-- Which rankings are in which folders. A ranking can be in several folders (a 2026
+-- release can also be a favourite). Deleting a folder or a ranking removes its rows
+-- here; it never deletes the other side.
+create table public.ranking_folder_items (
+  folder_id   uuid not null references public.ranking_folders (id) on delete cascade,
+  ranking_id  uuid not null references public.rankings (id) on delete cascade,
+  user_id     uuid not null default auth.uid()
+              references auth.users (id) on delete cascade,
+  added_at    timestamptz not null default now(),
+  primary key (folder_id, ranking_id)
+);
+create index ranking_folder_items_ranking on public.ranking_folder_items (ranking_id);
+
+alter table public.ranking_folders      enable row level security;
+alter table public.ranking_folder_items enable row level security;
+
+create policy "Users manage their own folders"
+  on public.ranking_folders for all to authenticated
+  using      ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+-- A user can only file their own rankings into their own folders. The subqueries run
+-- under the user's own row-level security, so they only ever see that user's rows.
+create policy "Users manage their own folder items"
+  on public.ranking_folder_items for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check (
+    (select auth.uid()) = user_id
+    and exists (select 1 from public.ranking_folders f where f.id = folder_id)
+    and exists (select 1 from public.rankings r where r.id = ranking_id)
+  );
+
+grant select, insert, update, delete on public.ranking_folders      to authenticated;
+grant select, insert, delete         on public.ranking_folder_items to authenticated;

@@ -1,7 +1,5 @@
 // rankings.js — search for an artist or album, hand off to rank.html
 import { getSpotifyToken, esc } from "./auth.js";
-import { onUserChange } from "./supabase.js";
-import { listRankings, deleteRanking, rankingUrl, KIND_LABELS } from "./saved-rankings.js";
 
 const backBtn = document.getElementById("back-btn");
 const searchInput = document.getElementById("rankings-search-input");
@@ -165,72 +163,3 @@ window.addEventListener("pageshow", (e) => {
         if (resultsEl) resultsEl.innerHTML = "";
     }
 });
-
-// ── Saved rankings (TuneVis account) ──────────────────────────────────
-const savedSection = document.getElementById("saved-rankings");
-const savedList = document.getElementById("saved-rankings-list");
-
-function savedRankingRow(r) {
-    const row = document.createElement("div");
-    row.className = "saved-ranking";
-    const count = r.item_ids?.length || 0;
-    const kindLabel = KIND_LABELS[r.kind] || "Ranking";
-    const about = r.source_name ? ` · ${r.source_name}` : "";
-    const updated = new Date(r.updated_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-    const round = r.kind === "artist" || r.kind === "fav_artists" ? "border-radius:50%;" : "";
-    row.innerHTML = `
-        <a class="saved-ranking-open" href="${esc(rankingUrl(r))}">
-            ${r.image ? `<img class="saved-ranking-img" style="${round}" src="${esc(r.image)}" alt="">` : `<div class="saved-ranking-img"></div>`}
-            <div class="saved-ranking-meta">
-                <span class="saved-ranking-name">${esc(r.title)}</span>
-                <span class="saved-ranking-sub">${esc(kindLabel + about)} · ${count} ranked · ${esc(updated)}</span>
-            </div>
-        </a>
-        <button type="button" class="saved-ranking-delete">Delete</button>
-    `;
-    row.querySelector(".saved-ranking-delete").addEventListener("click", async (e) => {
-        if (!confirm(`Delete "${r.title}"? This can't be undone.`)) return;
-        e.target.disabled = true;
-        try {
-            await deleteRanking(r.id);
-            row.remove();
-            if (!savedList.children.length) renderSavedEmpty();
-        } catch (err) {
-            console.error(err);
-            e.target.disabled = false;
-            alert("That ranking couldn't be deleted just now. Please try again.");
-        }
-    });
-    return row;
-}
-
-function renderSavedEmpty() {
-    savedList.innerHTML = `<p class="tab-empty">Nothing saved yet. Build a ranking and press Save to keep it here.</p>`;
-}
-
-let savedRequestId = 0;
-
-async function loadSavedRankings(user) {
-    if (!savedSection) return;
-    const requestId = ++savedRequestId;
-    if (!user) { savedSection.hidden = true; return; }
-
-    savedSection.hidden = false;
-    savedList.innerHTML = `<p class="tab-loading">Loading your rankings…</p>`;
-    try {
-        const rows = await listRankings();
-        if (requestId !== savedRequestId) return;
-        savedList.innerHTML = "";
-        if (!rows?.length) renderSavedEmpty();
-        else rows.forEach(r => savedList.appendChild(savedRankingRow(r)));
-    } catch (err) {
-        if (requestId !== savedRequestId) return;
-        console.error(err);
-        savedList.innerHTML = `<p class="tab-empty">Your saved rankings couldn't be loaded just now.</p>`;
-    }
-    // Linked from the account page as rankings.html#saved-rankings; the section only
-    // appears once loaded, so scroll to it now.
-    if (window.location.hash === "#saved-rankings") savedSection.scrollIntoView({ behavior: "smooth" });
-}
-
-onUserChange(loadSavedRankings);

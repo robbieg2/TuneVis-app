@@ -2,6 +2,7 @@
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 import { initSaveButton } from "./saved-rankings.js";
+import { createStarRating, parseRating, starsText, formatRating } from "./star-rating.js";
 
 const backBtn = document.getElementById("back-btn");
 const shareBtn = document.getElementById("share-btn");
@@ -36,6 +37,7 @@ let rankedIds = [];          // ordered array of track ids, length <= rankSize
 let listName = "";           // user-editable title for this ranking, used in exports
 let savedId = null;          // the saved ranking (account) this page is editing, if any
 let saveCtl = { refresh() {}, reset() {} };
+let rating = null;           // album only: overall star rating, 0.5–5 in half steps
 
 function addToPool(track) {
     if (!allTracks.some(t => t.id === track.id)) {
@@ -52,6 +54,7 @@ function getParams() {
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
         name: p.get("name") || null,
         saved: p.get("saved") || null,
+        rating: parseRating(p.get("rating")),
     };
 }
 
@@ -62,6 +65,7 @@ function rankingParams({ includeSaved = true } = {}) {
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
     if (listName) p.set("name", listName);
+    if (meta.type === "album" && rating) p.set("rating", String(rating));
     if (includeSaved && savedId) p.set("saved", savedId);
     return p;
 }
@@ -86,6 +90,8 @@ function getSaveRecord() {
             .filter(Boolean)
             .map(t => ({ id: t.id, name: t.name, subtitle: (t.artists || []).join(", "), image: t.image || "" })),
         image: meta.image || null,
+        // Only album rankings have a rating column value.
+        ...(meta.type === "album" ? { rating } : {}),
     };
 }
 
@@ -214,6 +220,17 @@ function renderHead() {
     `;
 
     document.getElementById("rank-play-btn")?.addEventListener("click", togglePlayer);
+
+    // Albums get an overall star rating alongside the track order.
+    if (meta.type === "album") {
+        const { el } = createStarRating({
+            value: rating,
+            label: `Your rating for ${meta.name}`,
+            onChange: value => { rating = value; syncUrl(); },
+        });
+        el.classList.add("rank-head-rating");
+        headEl.querySelector(".rank-head-meta").appendChild(el);
+    }
 }
 
 function togglePlayer() {
@@ -450,7 +467,8 @@ async function openExportModal() {
     modal.querySelector(".site-info-close").addEventListener("click", () => modal.remove());
     modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
 
-    const subtitle = meta.type === "album" ? meta.subtitle : "Top Tracks";
+    const ratingNote = meta.type === "album" && rating ? `  ·  ${starsText(rating)} ${formatRating(rating)}/5` : "";
+    const subtitle = meta.type === "album" ? `${meta.subtitle}${ratingNote}` : "Top Tracks";
     const exportData = { title: listName || defaultListName(), subtitle, items };
 
     document.getElementById("export-copy-btn")?.addEventListener("click", async () => {
@@ -654,7 +672,7 @@ function renderSearchResults(results) {
 
 // ── Init ───────────────────────────────────────────────────────────────
 async function init() {
-    const { type, id, size, order, name, saved } = getParams();
+    const { type, id, size, order, name, saved, rating: ratingParam } = getParams();
 
     if (!type || !id || (type !== "artist" && type !== "album")) {
         loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">No artist or album selected</div><div class="loading-sub">Go back and search for one to rank.</div></div>`;
@@ -679,6 +697,7 @@ async function init() {
         rankedIds = order.filter(oid => allTracks.some(t => t.id === oid)).slice(0, rankSize);
         listName = name || defaultListName();
         savedId = saved;
+        rating = type === "album" ? ratingParam : null;
 
         renderHead();
         renderAll();

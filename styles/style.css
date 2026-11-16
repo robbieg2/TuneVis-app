@@ -1838,7 +1838,12 @@ button:disabled {
     border: 1px solid rgba(29, 185, 84, 0.5);
 }
 
+/* width: 100% matters: with auto margins inside the page's flex column the section
+   would otherwise size to its content, and on phones the one-row folder tabs are far
+   wider than the screen. */
 .saved-rankings {
+    width: 100%;
+    box-sizing: border-box;
     max-width: 760px;
     margin: 10px auto 24px;
     padding: 0 20px;
@@ -2440,4 +2445,326 @@ button:disabled {
 
 @media (max-width: 768px) {
     .username-input-wrap input { font-size: 16px; }
+}
+
+/* ── Star ratings (album rankings) ───────────────────────────── */
+.star {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.star svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.star-empty path {
+    fill: rgba(255, 255, 255, 0.14);
+    stroke: rgba(255, 255, 255, 0.28);
+    stroke-width: 1;
+}
+
+.star-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    overflow: hidden;
+}
+
+.star-fill svg { max-width: none; }
+
+.star-fill path {
+    fill: #ffc94d;
+    stroke: #ffb020;
+    stroke-width: 1;
+}
+
+.star-rating {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+}
+
+.star-rating-stars {
+    display: flex;
+    gap: 3px;
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 2px;
+    touch-action: manipulation;
+}
+
+.star-rating-stars:focus-visible {
+    outline: 2px solid rgba(255, 201, 77, 0.7);
+    outline-offset: 2px;
+}
+
+.star-rating-stars.previewing .star-fill path { fill: #ffd97a; }
+
+/* Fixed width (fits "Not rated" and "4.5 / 5") so the stars never shift sideways. */
+.star-rating-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffc94d;
+    width: 5.4em;
+    white-space: nowrap;
+}
+
+.star-rating-value.unset {
+    color: inherit;
+    font-weight: 400;
+    opacity: 0.6;
+}
+
+.star-rating-clear {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 12px;
+    padding: 4px 10px;
+}
+
+.star-rating-clear:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.rank-head-rating { margin-top: 8px; }
+
+.star-static {
+    display: inline-flex;
+    gap: 1px;
+    vertical-align: middle;
+}
+
+/* ── Saved rankings: folders ─────────────────────────────────── */
+.folder-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.folder-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #fff;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+}
+
+.folder-chip:hover { background: rgba(255, 255, 255, 0.12); }
+
+.folder-chip.active {
+    background: #1db954;
+    border-color: #1db954;
+    font-weight: 600;
+}
+
+.folder-chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.folder-chip-count {
+    font-size: 11px;
+    opacity: 0.75;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 999px;
+    padding: 1px 7px;
+}
+
+.folder-chip-new {
+    background: transparent;
+    border-style: dashed;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.folder-tools {
+    display: flex;
+    gap: 8px;
+    margin: -2px 0 12px;
+}
+
+.folder-tool-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+    padding: 5px 12px;
+}
+
+.folder-tool-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.folder-tool-btn.danger:hover { border-color: rgba(255, 80, 80, 0.6); background: rgba(255, 80, 80, 0.12); }
+
+.saved-ranking-img.round { border-radius: 50%; }
+
+.saved-ranking-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffc94d;
+}
+
+.saved-ranking-folders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.folder-tag {
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(181, 123, 255, 0.16);
+    border: 1px solid rgba(181, 123, 255, 0.35);
+    color: #e4d2ff;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.saved-ranking-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.icon-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+}
+
+.icon-btn svg {
+    width: 17px;
+    height: 17px;
+    fill: rgba(255, 255, 255, 0.8);
+}
+
+.icon-btn:hover { background: rgba(255, 255, 255, 0.08); }
+.icon-btn.delete-btn:hover { border-color: rgba(255, 80, 80, 0.6); background: rgba(255, 80, 80, 0.12); }
+
+/* Folder modals */
+.library-modal-card h2 { margin-bottom: 4px; }
+
+.library-modal-sub {
+    margin: 0 0 14px;
+    font-size: 13px;
+    opacity: 0.7;
+    overflow-wrap: anywhere;
+}
+
+.library-modal-empty {
+    font-size: 13px;
+    opacity: 0.7;
+    margin: 0 0 12px;
+}
+
+.folder-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 45vh;
+    overflow-y: auto;
+    margin-bottom: 14px;
+}
+
+.folder-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.folder-check:hover { background: rgba(255, 255, 255, 0.08); }
+
+.folder-check input {
+    width: 18px;
+    height: 18px;
+    accent-color: #1db954;
+    flex-shrink: 0;
+}
+
+.folder-check span { overflow-wrap: anywhere; }
+
+.folder-quick-add {
+    display: flex;
+    gap: 8px;
+}
+
+.folder-quick-add input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    color: #fff;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.folder-quick-add input:focus {
+    outline: none;
+    border-color: rgba(29, 185, 84, 0.6);
+}
+
+.folder-name-form .username-status:empty,
+.library-modal-card > .username-status:empty { display: none; }
+
+.library-modal-card > .username-status { margin-top: 8px; }
+
+@media (max-width: 768px) {
+    .folder-quick-add input { font-size: 16px; }
+
+    /* On phones the folder tabs scroll sideways rather than wrapping into many rows. */
+    .folder-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        margin-left: -16px;
+        margin-right: -16px;
+        padding: 0 16px 2px;
+    }
+
+    .folder-bar::-webkit-scrollbar { display: none; }
+    .folder-chip { flex-shrink: 0; }
+    .folder-chip-name { max-width: 160px; }
+
+    .saved-ranking { align-items: flex-start; }
+    .saved-ranking-actions { flex-direction: column; }
+
+    .rank-head-rating .star-rating-stars .star {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .rank-head-rating .star-rating-stars .star-fill svg {
+        width: 32px !important;
+        height: 32px !important;
+    }
 }
