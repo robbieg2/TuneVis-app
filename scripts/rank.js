@@ -57,7 +57,7 @@ const listState = { tracks: null, albums: null };
 let albumPool = null;        // the artist's albums, loaded the first time Albums is opened
 
 const isAlbumsList = () => meta?.type === "artist" && list === "albums";
-const itemWord = () => (isAlbumsList() ? "album" : "track");
+const itemWord = () => (isAlbumsList() ? "album or EP" : "track");
 const kind = () => (meta.type === "album" ? "album" : isAlbumsList() ? "artist_albums" : "artist");
 
 function addToPool(item) {
@@ -276,45 +276,74 @@ async function loadAlbum(token, id) {
     ];
 }
 
+// Spotify has no "EP" type: EPs are filed as singles. A "single" with 4 or more
+// tracks is treated as an EP; shorter ones are real singles and are left out.
+const EP_MIN_TRACKS = 4;
+const releaseType = al => (al.album_type === "single" || al.album_group === "single" ? "EP" : "Album");
+
 function albumItem(al) {
     const year = (al.release_date || "").slice(0, 4);
+    const type = releaseType(al);
     return {
         id: al.id,
         name: al.name,
-        artists: [year ? `${year} · Album` : "Album"],   // shown as the row's subtitle
+        artists: [year ? `${year} · ${type}` : type],   // shown as the row's subtitle
         image: al.images?.[0]?.url || meta.image,
         releaseDate: al.release_date || "",
     };
 }
 
-// "Album (Deluxe Edition)", "Album - 2011 Remaster" … all count as the same album.
+// Words that mark another edition of the same record. Deliberately not "live"
+// (a live album is its own record, e.g. "W.L. (Live from Stirling Castle)") or
+// "version" (re-recordings like "(Taylor's Version)" are separate albums).
+const EDITION_WORDS = "deluxe|edition|remaster|remastered|expanded|anniversary|bonus|international";
+
+// Bundles that aren't really albums or EPs: remix packs, karaoke and instrumental
+// versions, sped-up / slowed edits, music-video audio.
+const NOT_A_RECORD = /\b(remix|remixes|mixes|karaoke|instrumentals?|sped up|slowed|music video)\b/i;
+
+// "W.L. (Deluxe)", "Millennials (Deluxe Edition)", "Album - 2011 Remaster" all share
+// the key of the standard edition ("w.l.", "millennials", "album").
 function albumKey(name) {
     return String(name).toLowerCase()
-        .replace(/\s*[([][^)\]]*(deluxe|edition|remaster|expanded|version|anniversary|bonus|live)[^)\]]*[)\]]/g, "")
-        .replace(/\s*-\s*.*(deluxe|edition|remaster|expanded|version|anniversary).*$/, "")
+        .replace(new RegExp(`\\s*[([][^)\\]]*\\b(${EDITION_WORDS})\\b[^)\\]]*[)\\]]`, "g"), "")
+        .replace(new RegExp(`\\s+-\\s+[^-]*\\b(${EDITION_WORDS})\\b.*$`), "")
         .replace(/\s+/g, " ")
         .trim();
 }
 
-// The artist's studio albums (no singles or compilations), one entry per album
-// (the original release where Spotify lists several editions), newest first.
+// Of several editions of one record, show the standard one if Spotify has it,
+// otherwise the earliest (e.g. only "W.L. (Deluxe)" exists, so that's shown).
+function pickEdition(editions) {
+    const standard = editions.filter(al => albumKey(al.name) === al.name.toLowerCase().replace(/\s+/g, " ").trim());
+    const pool = standard.length ? standard : editions;
+    return pool.slice().sort((a, b) => String(a.release_date).localeCompare(String(b.release_date)))[0];
+}
+
+// The artist's albums and EPs (no short singles, compilations or appearances on
+// other artists' records), one entry per record, newest first.
 async function loadArtistAlbums(token) {
-    let url = `https://api.spotify.com/v1/artists/${meta.id}/albums?include_groups=album&market=GB&limit=50`;
+    let url = `https://api.spotify.com/v1/artists/${meta.id}/albums?include_groups=album,single&market=GB&limit=50`;
     const raw = [];
-    for (let page = 0; url && page < 4; page++) {
+    for (let page = 0; url && page < 6; page++) {
         const data = await spotifyFetch(token, url);
         raw.push(...(data?.items || []));
         url = data?.next || null;
     }
-    const byOldest = raw.slice().sort((a, b) => String(a.release_date).localeCompare(String(b.release_date)));
-    const seen = new Set();
-    const unique = byOldest.filter(al => {
-        const key = albumKey(al.name);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
-    return unique.map(albumItem).sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+    const records = raw.filter(al =>
+        !NOT_A_RECORD.test(al.name) &&
+        (releaseType(al) === "Album" || (al.total_tracks || 0) >= EP_MIN_TRACKS));
+
+    const groups = new Map();
+    for (const al of records) {
+        const key = `${releaseType(al)}:${albumKey(al.name)}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(al);
+    }
+    return [...groups.values()]
+        .map(pickEdition)
+        .map(albumItem)
+        .sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────
@@ -433,7 +462,7 @@ function trackRow(track) {
 function renderTrackList() {
     trackListEl.innerHTML = "";
     if (!leftPanelTracks.length && isAlbumsList()) {
-        trackListEl.innerHTML = `<p class="track-suggestion-empty">${trackSearchInput?.value.trim() ? "No albums match that search." : "No albums found for this artist."}</p>`;
+        trackListEl.innerHTML = `<p class="track-suggestion-empty">${trackSearchInput?.value.trim() ? "No albums or EPs match that search." : "No albums or EPs found for this artist."}</p>`;
     }
     leftPanelTracks.forEach(t => trackListEl.appendChild(trackRow(t)));
     updateTrackListHeight();
@@ -453,7 +482,7 @@ function rankRow(trackId, index) {
 
     if (!track) {
         row.classList.add("empty");
-        row.innerHTML = `<span class="rank-row-num">${index + 1}</span><span class="rank-row-empty-text">Add ${isAlbumsList() ? "an album" : "a track"}</span>`;
+        row.innerHTML = `<span class="rank-row-num">${index + 1}</span><span class="rank-row-empty-text">Add ${isAlbumsList() ? "an album or EP" : "a track"}</span>`;
         return row;
     }
 
@@ -514,11 +543,11 @@ function renderAll() {
 function applyListLabels() {
     const albums = isAlbumsList();
     updateTitle();
-    if (trackListTitleEl) trackListTitleEl.textContent = albums ? "Albums" : "Tracklist";
+    if (trackListTitleEl) trackListTitleEl.textContent = albums ? "Albums & EPs" : "Tracklist";
     const mobileTab = document.querySelector('.rank-mobile-tabs .tab-btn[data-panel="tracks"]');
-    if (mobileTab) mobileTab.textContent = albums ? "Albums" : "Tracklist";
+    if (mobileTab) mobileTab.textContent = albums ? "Albums & EPs" : "Tracklist";
     if (trackSearchInput) {
-        trackSearchInput.placeholder = albums ? "Filter this artist's albums..." : "Search songs or albums by this artist...";
+        trackSearchInput.placeholder = albums ? "Filter this artist's albums and EPs..." : "Search songs or albums by this artist...";
     }
     if (trackSearchBtn) trackSearchBtn.hidden = albums;   // albums filter as you type
     listToggleEl?.querySelectorAll("[data-list]").forEach(btn => {
@@ -539,7 +568,7 @@ function viewItems() {
 function renderView() {
     const items = viewItems();
     const label = KIND_LABELS[kind()] || "Ranking";
-    const noun = isAlbumsList() ? "albums" : "tracks";
+    const noun = isAlbumsList() ? "albums & EPs" : "tracks";
     const count = meta.type === "album"
         ? `${items.length} of ${allTracks.length} tracks ranked`
         : items.length >= rankSize ? `Top ${rankSize} ${noun}` : `${items.length} of top ${rankSize} ${noun} ranked`;
@@ -547,7 +576,7 @@ function renderView() {
         title: listName || defaultListName(),
         meta: `${label} · ${count}`,
         items,
-        emptyText: meta.type === "album" ? "No tracks ranked yet." : `No ${itemWord()}s ranked yet.`,
+        emptyText: meta.type === "album" ? "No tracks ranked yet." : `No ${isAlbumsList() ? "albums or EPs" : "tracks"} ranked yet.`,
     });
 }
 
@@ -596,7 +625,7 @@ async function switchList(next, { restore = null } = {}) {
         ({ allTracks, leftPanelTracks, sizeOptions, rankSize, listName, savedId } = saved);
         rankedIds = saved.rankedIds.slice();
     } else {
-        trackListEl.innerHTML = `<p class="tab-loading">Loading albums…</p>`;
+        trackListEl.innerHTML = `<p class="tab-loading">Loading albums and EPs…</p>`;
         if (!albumPool) {
             try {
                 albumPool = await loadArtistAlbums(cachedToken);
@@ -704,7 +733,7 @@ async function openExportModal() {
     const ratingNote = meta.type === "album" && rating ? `  ·  ${starsText(rating)} ${formatRating(rating)}/5` : "";
     const subtitle = meta.type === "album"
         ? `${meta.subtitle}${ratingNote}`
-        : isAlbumsList() ? `${meta.name} · Albums` : "Top Tracks";
+        : isAlbumsList() ? `${meta.name} · Albums & EPs` : "Top Tracks";
     const exportData = { title: listName || defaultListName(), subtitle, items };
 
     document.getElementById("export-copy-btn")?.addEventListener("click", async () => {

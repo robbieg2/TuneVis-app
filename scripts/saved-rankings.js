@@ -31,7 +31,7 @@ function comparable(r) {
 
 export const KIND_LABELS = {
     artist: "Artist top tracks",
-    artist_albums: "Artist albums",
+    artist_albums: "Artist albums & EPs",
     album: "Album ranking",
     fav_artists: "Favourite artists",
     fav_tracks: "Favourite tracks",
