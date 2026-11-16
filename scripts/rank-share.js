@@ -59,7 +59,8 @@ export async function buildRankingImage({ title, subtitle, items }) {
     canvas.width = Math.round(width * scale);
     canvas.height = Math.round(height * scale);
     canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    // No inline height: CSS (max-width: 100%; height: auto) keeps the aspect ratio when
+    // the preview is narrower than the image, e.g. on phones.
 
     const ctx = canvas.getContext("2d");
     ctx.scale(scale, scale);

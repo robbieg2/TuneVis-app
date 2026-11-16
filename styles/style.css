@@ -1577,7 +1577,10 @@ button {
 
 .export-preview-canvas {
     max-width: 100%;
-    height: auto;
+    height: auto !important;
+    align-self: flex-start;
+    flex-shrink: 1;
+    min-width: 0;
     border-radius: 8px;
 }
 
@@ -3386,4 +3389,25 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 @media (max-width: 400px) {
     /* Tight phones: stars only, without the number. */
     .rank-view-badge-value { display: none; }
+}
+
+/* Phones: Safari paints the strip under its toolbar and the home indicator in the
+   page's plain background colour (#121212), which showed as a hard black band below
+   the coloured glow. The layer now runs past the bottom of the screen and its lower
+   edge fades into that same colour, so the glow blends into the strip instead of
+   stopping at a line. A gentle glow also sits along the bottom so it isn't flat. */
+@media (max-width: 768px) {
+	.bg-layer {
+		height: calc(100lvh + env(safe-area-inset-bottom) + 40px);
+		background: radial-gradient(130% 40% at 50% 100%, rgba(178, 107, 255, 0.16), transparent 70%);
+	}
+	.bg-layer::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: calc(140px + env(safe-area-inset-bottom));
+		background: linear-gradient(to bottom, rgba(18, 18, 18, 0), #121212 85%);
+	}
 }
