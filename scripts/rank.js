@@ -101,7 +101,9 @@ function initSave() {
         getRecord: getSaveRecord,
         getSavedId: () => savedId,
         setSavedId: id => { savedId = id; syncUrl(); },
-        emptyMessage: "Add at least one track to your ranking before saving.",
+        emptyMessage: meta.type === "album"
+            ? "Give the album a star rating or add at least one track before saving."
+            : "Add at least one track to your ranking before saving.",
     });
 }
 

@@ -14,6 +14,8 @@ const section = document.getElementById("saved-rankings");
 const listEl = document.getElementById("saved-rankings-list");
 const barEl = document.getElementById("folder-bar");
 const toolsEl = document.getElementById("folder-tools");
+const sortEl = document.getElementById("sort-toggle");
+const SORT_KEY = "tunevis_saved_sort";
 
 const FOLDER_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.76a2 2 0 0 1 1.42.59L12.1 6H18.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>`;
 const TRASH_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/></svg>`;
@@ -24,7 +26,33 @@ let folders = [];
 let items = [];                 // [{ folder_id, ranking_id }]
 let foldersAvailable = false;   // false until the folders migration has been run
 let active = "all";             // "all" or a folder id
+let sortBy = readSortPreference(); // "recent" or "rating"
 let loadId = 0;
+
+// The chosen sort is a per-browser convenience; the list works without it.
+function readSortPreference() {
+    try { return localStorage.getItem(SORT_KEY) === "rating" ? "rating" : "recent"; }
+    catch { return "recent"; }
+}
+
+const ratingOf = r => (r.kind === "album" && r.rating != null ? Number(r.rating) : null);
+const newestFirst = (a, b) => String(b.updated_at).localeCompare(String(a.updated_at));
+
+// "rating": rated albums first, highest stars first (ties: most recent first), then
+// everything without a rating, most recent first. "recent": most recent first.
+function sorted(list) {
+    const copy = list.slice();
+    if (sortBy !== "rating") return copy.sort(newestFirst);
+    return copy.sort((a, b) => {
+        const ra = ratingOf(a), rb = ratingOf(b);
+        if (ra !== rb) {
+            if (ra === null) return 1;
+            if (rb === null) return -1;
+            return rb - ra;
+        }
+        return newestFirst(a, b);
+    });
+}
 
 const foldersOf = rankingId => folders.filter(f => items.some(i => i.folder_id === f.id && i.ranking_id === rankingId));
 const countIn = folderId => items.filter(i => i.folder_id === folderId && rankings.some(r => r.id === i.ranking_id)).length;
@@ -41,8 +69,26 @@ function syncFolderUrl() {
 // ── Rendering ──────────────────────────────────────────────────────────
 function render() {
     renderFolderBar();
+    renderSortToggle();
     renderList();
 }
+
+function renderSortToggle() {
+    sortEl.querySelectorAll("button").forEach(btn => {
+        const on = btn.dataset.sort === sortBy;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-pressed", String(on));
+    });
+}
+
+sortEl.addEventListener("click", e => {
+    const btn = e.target.closest("button[data-sort]");
+    if (!btn || btn.dataset.sort === sortBy) return;
+    sortBy = btn.dataset.sort;
+    try { localStorage.setItem(SORT_KEY, sortBy); } catch {}
+    renderSortToggle();
+    renderList();
+});
 
 function renderFolderBar() {
     barEl.hidden = !foldersAvailable;
@@ -77,7 +123,7 @@ function rankingRow(r) {
             ${r.image ? `<img class="saved-ranking-img${round}" src="${esc(r.image)}" alt="">` : `<div class="saved-ranking-img${round}"></div>`}
             <div class="saved-ranking-meta">
                 <span class="saved-ranking-name">${esc(r.title)}</span>
-                <span class="saved-ranking-sub">${esc(kindLabel + about)} · ${count} ranked · ${esc(updated)}</span>
+                <span class="saved-ranking-sub">${esc(kindLabel + about)} · ${count ? `${count} ranked` : "tracks not ranked yet"} · ${esc(updated)}</span>
                 ${rating ? `<span class="saved-ranking-rating">${starsHtml(rating, { size: 13 })}<span>${formatRating(rating)}</span></span>` : ""}
                 ${inFolders.length ? `<span class="saved-ranking-folders">${inFolders.map(f => `<span class="folder-tag">${esc(f.name)}</span>`).join("")}</span>` : ""}
             </div>
@@ -109,9 +155,9 @@ function rankingRow(r) {
 
 function renderList() {
     const folder = activeFolder();
-    const shown = folder
+    const shown = sorted(folder
         ? rankings.filter(r => items.some(i => i.folder_id === folder.id && i.ranking_id === r.id))
-        : rankings;
+        : rankings);
 
     listEl.innerHTML = "";
     if (!shown.length) {

@@ -2768,3 +2768,40 @@ button:disabled {
         height: 32px !important;
     }
 }
+
+/* ── Saved rankings: heading and sort switch ──────────────────── */
+.saved-rankings-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-bottom: 12px;
+}
+
+.saved-rankings-head .saved-rankings-title { margin: 0; }
+
+.sort-toggle {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sort-toggle button {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.75);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.sort-toggle button:hover { color: #fff; }
+
+.sort-toggle button.active {
+    background: #1db954;
+    color: #fff;
+    font-weight: 600;
+}

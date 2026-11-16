@@ -118,7 +118,12 @@ export function initSaveButton({ button, getRecord, getSavedId, setSavedId, empt
         if (!user) { window.location.href = loginUrl(); return; }
 
         const record = getRecord();
-        if (!record.item_ids.length) { alert(emptyMessage || "Add something to your ranking before saving."); return; }
+        // A ranking needs something in it: at least one ranked item, or (albums) a star
+        // rating on its own, so an album can be rated before its tracks are ordered.
+        if (!record.item_ids.length && !record.rating) {
+            alert(emptyMessage || "Add something to your ranking before saving.");
+            return;
+        }
 
         const supabase = await getSupabase();
         // Before the ratings migration the column doesn't exist: save everything else.

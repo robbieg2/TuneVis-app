@@ -82,7 +82,13 @@
   </div>
 
   <section id="saved-rankings" class="saved-rankings" hidden>
-    <h2 class="saved-rankings-title">Your saved rankings</h2>
+    <div class="saved-rankings-head">
+      <h2 class="saved-rankings-title">Your saved rankings</h2>
+      <div class="sort-toggle" id="sort-toggle" role="group" aria-label="Sort saved rankings">
+        <button type="button" data-sort="recent" aria-pressed="true">Most recent</button>
+        <button type="button" data-sort="rating" aria-pressed="false">Highest stars</button>
+      </div>
+    </div>
     <div class="folder-bar" id="folder-bar" aria-label="Folders" hidden></div>
     <div class="folder-tools" id="folder-tools" hidden>
       <button type="button" class="folder-tool-btn" id="folder-rename">Rename folder</button>
