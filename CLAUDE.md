@@ -40,7 +40,7 @@ Music discovery, audio-feature analysis and ranking web app. Vanilla HTML/CSS/JS
 ## Conventions and gotchas
 - Debounced searches use a `requestId` counter to ignore out-of-order responses; keep doing this.
 - Persistent DOM nodes that get re-rendered must guard listeners with `dataset.*Wired` flags to avoid accumulation.
-- Use HTML entity glyphs (`&#8592;`, `&#10005;` etc.) for icons. No icon font is loaded.
+- Use HTML entity glyphs (`&#8592;`, `&#10005;` etc.) or small inline SVGs for icons. No icon font is loaded. Avoid characters that iPhones draw as colour emoji (e.g. ▶ `&#9654;`, ◀, ✔, ❤): use an inline SVG instead (see `PLAY_LABEL` in rank.js).
 - Clear search inputs on bfcache restore via `pageshow` + `event.persisted`.
 - Pages that need footer pinning use `class="page-flex"` on body.
 - Canvas export loads images with `crossOrigin="anonymous"` and falls back to a placeholder on failure to avoid tainting.
@@ -48,7 +48,8 @@ Music discovery, audio-feature analysis and ranking web app. Vanilla HTML/CSS/JS
 - **Mobile is supported on every page** (phones from 320px up). All mobile rules live in the "Responsive: tablets and phones" section at the end of `style.css` (768px, 480px, 360px), grouped by page; add new ones there. Check new UI at 320, 375 and 768px wide as well as desktop. Rules of thumb: grid columns use `minmax(0, 1fr)` (a plain `1fr` grows to fit wide content like the recommendations carousel); inputs are 16px on mobile (smaller makes iOS zoom); D3 charts size from their container's `clientWidth`, not `window.innerWidth`, and `features-charts.js` redraws them when the window width changes; JS that sets inline `display` needs `!important` in CSS to hide it on mobile.
 - `body.page-flex > * { flex-shrink: 0 }`: without it, pages taller than the screen squeezed their sections (body is `height: 100%`) and the big logo header slid up under the top edge on phones.
 - **Song page charts**: in the desktop three-column layout `alignChartHeights()` (features-charts.js) draws the bar and scatter charts down to the bottom of the radar's content (radar stays square) so the three cards line up; it reruns after drawing and on width changes, and does nothing when the cards stack.
-- `.bg-layer` is `position: fixed; overflow: hidden` so the decorative circles never widen the page.
+- `.bg-layer` is `position: fixed; overflow: hidden` so the decorative circles never widen the page, and `height: 100lvh` so it also fills the space behind mobile browser toolbars (otherwise a black strip at the bottom).
+- **Full-screen on phones**: every page's viewport tag has `viewport-fit=cover` and `apple-mobile-web-app-status-bar-style` is `black-translucent`, so in the home-screen app the background runs under the status bar and home indicator. `body` is padded by `env(safe-area-inset-*)` (0 in normal tabs) to keep content clear of them; keep new full-screen or fixed elements inside the safe area too.
 - **Footer and SEO**: every page has the same `<footer class="site-footer">` (About · Help & FAQ · Privacy · Terms, credits, Spotify disclaimer) with `aria-current="page"` on its own link; change it on every page together. Each page has its own `<title>`, meta description, `og:title` / `og:description` and a canonical URL on `https://tunevis.vercel.app`; account pages and 404 are `noindex`. `index.html` and `about.html` carry WebApplication JSON-LD. `sitemap.xml` lists the public pages and `robots.txt` points to it; add new public pages to both. Song and ranking pages set `document.title` to what's on screen.
 
 ## Known state

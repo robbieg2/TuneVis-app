@@ -3,6 +3,14 @@ html, body {
 	height: 100%;
 }
 
+html {
+	background: #121212;
+}
+
+/* Pages use the whole screen (viewport-fit=cover in each page's viewport tag), so
+   in the home-screen app the background runs under the status bar and home
+   indicator. The safe-area padding keeps content clear of the notch and home bar;
+   in a normal browser tab these insets are 0. */
 body {
     background: #121212;
 	min-height: 100vh;
@@ -10,7 +18,8 @@ body {
     font-family: "Poppins", sans-serif;
     text-align: center;
     margin: 0;
-    padding: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 	position: relative;
 	overflow-x: hidden;
 }
@@ -512,12 +521,23 @@ header.logo .logo-title {
 
 .rank-play-btn {
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 13px;
+    font-weight: 600;
     padding: 6px 14px;
     background: rgba(29, 185, 84, 0.95);
     color: #fff;
     border: none;
     border-radius: 999px;
+}
+
+.btn-icon {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+    fill: currentColor;
 }
 
 .rank-play-btn:hover {
@@ -997,7 +1017,13 @@ button {
    unclipped they widened every page (535px wide on a 375px phone). */
 .bg-layer {
 	position: fixed;
-	inset: 0;
+	top: 0;
+	left: 0;
+	right: 0;
+	/* The large viewport height: on phones the background also fills the space
+	   behind the browser's toolbars, which otherwise showed as a black strip. */
+	height: 100vh;
+	height: 100lvh;
 	z-index: -1;
 	pointer-events: none;
 	overflow: hidden;

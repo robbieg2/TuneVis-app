@@ -361,7 +361,7 @@ function renderHead() {
         <div class="rank-head-meta">
             <div class="rank-head-name-row">
                 <h1 class="rank-head-name">${esc(meta.name)}</h1>
-                <button id="rank-play-btn" class="rank-play-btn" type="button" aria-label="Play">&#9654; Play</button>
+                <button id="rank-play-btn" class="rank-play-btn" type="button">${PLAY_LABEL}</button>
                 ${openInSpotifyHtml(meta.type, meta.id)}
             </div>
             <p class="rank-head-sub">${esc(meta.subtitle)}</p>
@@ -392,6 +392,10 @@ function renderHead() {
     metaBox.appendChild(el);
 }
 
+// Drawn icons rather than ▶ / ✕ characters: iPhones render ▶ as a coloured emoji.
+const PLAY_LABEL = `<svg class="btn-icon" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z"/></svg>Play`;
+const CLOSE_LABEL = `<svg class="btn-icon" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>Close player`;
+
 function togglePlayer() {
     const btn = document.getElementById("rank-play-btn");
     const isOpen = playerWrapEl.style.display !== "none";
@@ -399,7 +403,7 @@ function togglePlayer() {
     if (isOpen) {
         playerWrapEl.style.display = "none";
         playerWrapEl.innerHTML = "";
-        if (btn) btn.innerHTML = "&#9654; Play";
+        if (btn) btn.innerHTML = PLAY_LABEL;
         return;
     }
 
@@ -415,7 +419,7 @@ function togglePlayer() {
         </iframe>
     `;
     playerWrapEl.style.display = "block";
-    if (btn) btn.innerHTML = "&#10005; Close player";
+    if (btn) btn.innerHTML = CLOSE_LABEL;
 }
 
 function renderFilterToggle() {
