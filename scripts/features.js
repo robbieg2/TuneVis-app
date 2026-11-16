@@ -33,6 +33,7 @@ function setLoading(on, sub = "") {
 
 // Track header with embed	
 function renderTrackHeader(track) {
+    if (track?.name) document.title = `${track.name} · Audio Features — TuneVis`;
     const artistSpans = (track.artists || [])
         .map(a => `<span class="artist-link" data-artist-name="${esc(a)}">${esc(a)}</span>`)
         .join(", ");

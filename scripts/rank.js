@@ -318,7 +318,14 @@ async function loadArtistAlbums(token) {
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────
+// The browser tab title names what's being ranked, e.g. "Abbey Road Album Ranking".
+function updateTitle() {
+    const what = meta.type === "album" ? "Album" : isAlbumsList() ? "Albums" : "Tracks";
+    document.title = `${meta.name} ${what} Ranking — TuneVis`;
+}
+
 function renderHead() {
+    updateTitle();
     headEl.innerHTML = `
         ${meta.image ? `<img class="rank-head-img ${meta.type === "artist" ? "round" : ""}" src="${esc(meta.image)}" alt="">` : ""}
         <div class="rank-head-meta">
@@ -506,6 +513,7 @@ function renderAll() {
 // Labels that depend on whether the artist page is ranking tracks or albums.
 function applyListLabels() {
     const albums = isAlbumsList();
+    updateTitle();
     if (trackListTitleEl) trackListTitleEl.textContent = albums ? "Albums" : "Tracklist";
     const mobileTab = document.querySelector('.rank-mobile-tabs .tab-btn[data-panel="tracks"]');
     if (mobileTab) mobileTab.textContent = albums ? "Albums" : "Tracklist";

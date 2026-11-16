@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help &amp; FAQ — TuneVis</title>
+  <meta name="theme-color" content="#121212">
+  <link rel="canonical" href="https://tunevis.vercel.app/faq.html">
+  <meta property="og:url" content="https://tunevis.vercel.app/faq.html">
+  <meta name="description" content="Answers about similarity scores, audio features, playback, rankings, star ratings, folders and your TuneVis account.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TuneVis">
+  <meta property="og:title" content="Help &amp; FAQ — TuneVis">
+  <meta property="og:description" content="Answers about similarity scores, audio features, playback, rankings, star ratings, folders and your TuneVis account.">
+  <meta property="og:image" content="https://tunevis.vercel.app/icons/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="TuneVis logo with audio bars">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://tunevis.vercel.app/icons/og-image.png">
+  <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="TuneVis">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+<body class="page-flex content-page-body">
+  <div class="bg-layer">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+    <div class="bg-circle c4"></div>
+  </div>
+
+  <header class="features-header">
+    <button id="back-btn" aria-label="Back">&#8592;</button>
+
+    <a href="home.html" class="header-logo-link" title="TuneVis home">
+      <div class="header-logo-inner">
+        <svg class="header-logo-bars" viewBox="0 0 80 34" preserveAspectRatio="xMidYMid meet">
+          <defs>
+          <linearGradient id="tv-bars" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#139a45"/>
+            <stop offset="1" stop-color="#3ff08a"/>
+          </linearGradient>
+        </defs>
+        <g class="audio-bars">
+            <rect x="4"  y="13" width="5" height="8"  rx="2.5"/>
+            <rect x="15" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="26" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="37" y="2"  width="5" height="30" rx="2.5"/>
+            <rect x="48" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="59" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="70" y="13" width="5" height="8"  rx="2.5"/>
+          </g>
+        </svg>
+        <span class="header-logo-text">TuneVis</span>
+      </div>
+    </a>
+  </header>
+
+  <main class="content-page">
+    <article class="content-article">
+      <p class="content-kicker">Help</p>
+      <h1>Help &amp; FAQ</h1>
+      <p class="content-lead">Quick answers to the questions people ask most. Can't find what you need? Start with the <a href="about.html">About</a> page for an overview of how TuneVis works.</p>
+
+      <h2>Exploring songs</h2>
+      <details class="faq">
+        <summary>How is the similarity score worked out?</summary>
+        <p>Every song has six audio features on a 0–1 scale: danceability, energy, valence, speechiness, acousticness and instrumentalness. TuneVis measures the gap between your song and each recommendation on all six, averages the gaps, and turns that into a percentage. 100% means near-identical features; 0% means as different as possible. Tempo is shown on the charts but isn't part of the score.</p>
+      </details>
+      <details class="faq">
+        <summary>What do the audio features mean?</summary>
+        <p><strong>Danceability</strong>: how suitable the rhythm is for dancing. <strong>Energy</strong>: how intense and active it feels. <strong>Valence</strong>: how positive or happy it sounds. <strong>Speechiness</strong>: how much of it is spoken word. <strong>Acousticness</strong>: how likely it is to be acoustic rather than electronic. <strong>Instrumentalness</strong>: how likely it is to have no vocals. <strong>Tempo</strong>: its speed in beats per minute. The "?" button on any song's page has the full guide.</p>
+      </details>
+      <details class="faq">
+        <summary>Why does a song say its audio features are coming soon?</summary>
+        <p>Audio features come from ReccoBeats, which doesn't have every song yet, especially brand-new releases and some older catalogue. TuneVis tries a few other versions of the same song first; if none have features, it shows a note instead of the charts. Try again later, or pick another version of the song.</p>
+      </details>
+      <details class="faq">
+        <summary>Why won't a track play?</summary>
+        <p>Playback uses Spotify's embedded player, which needs you to be signed in to Spotify in the same browser. Open spotify.com in another tab and sign in, or use the Spotify app, then try again. Some tracks are also unavailable in certain countries.</p>
+      </details>
+      <details class="faq">
+        <summary>Where do trending tracks and recommendations come from?</summary>
+        <p>Trending tracks and genre charts come from Last.fm, as do the songs and artists related to the one you're exploring. Song details and artwork come from Spotify, and audio features from ReccoBeats.</p>
+      </details>
+
+      <h2>Rankings</h2>
+      <details class="faq">
+        <summary>What can I rank?</summary>
+        <p>An album's tracks (top 5 or the whole album), an artist's top tracks or their albums, and your all-time favourite artists or tracks. Search for an artist or album on the Rankings page, or choose "Create your own personal music rankings".</p>
+      </details>
+      <details class="faq">
+        <summary>How do star ratings work?</summary>
+        <p>Album rankings can have an overall rating from half a star to five stars. Tap the left half of a star for a half star, or the right half for a whole one. You can save an album with just a rating, before ranking any tracks.</p>
+      </details>
+      <details class="faq">
+        <summary>How do I edit a saved ranking?</summary>
+        <p>Open it from "Your saved rankings" on the Rankings page. It opens as a finished list; press <strong>Edit ranking</strong> to change it, then <strong>Done</strong> to save your changes and go back to the list.</p>
+      </details>
+      <details class="faq">
+        <summary>How do folders work?</summary>
+        <p>On the Rankings page, use "+ New folder" to create one, then the folder button on any saved ranking to add it. A ranking can be in more than one folder. Deleting a folder never deletes the rankings inside it.</p>
+      </details>
+      <details class="faq">
+        <summary>Can I share a ranking?</summary>
+        <p>Yes: press <strong>Export</strong> on any ranking to download it as an image or copy it as text, ready to post or send.</p>
+      </details>
+
+      <h2>Your account</h2>
+      <details class="faq">
+        <summary>Do I need an account?</summary>
+        <p>No. You can explore songs and build rankings without one. A free account lets you save rankings, ratings and folders, choose a username, and keep your recently viewed tracks across devices.</p>
+      </details>
+      <details class="faq">
+        <summary>I didn't get my confirmation or password reset email</summary>
+        <p>Check your spam or junk folder, and that you typed your email address correctly. The links expire after a while; if yours has, request a new one from the sign-in page.</p>
+      </details>
+      <details class="faq">
+        <summary>How do I change my username or password?</summary>
+        <p>Go to your account page (the round button in the top-right corner when you're signed in). You can change your username and password there.</p>
+      </details>
+      <details class="faq">
+        <summary>How do I delete my account?</summary>
+        <p>On your account page, open "Delete account" and type your email address to confirm. Your account, saved rankings, ratings, folders and recently viewed history are deleted straight away. This can't be undone. See the <a href="privacy.html">Privacy policy</a> for more.</p>
+      </details>
+
+      <h2>Everything else</h2>
+      <details class="faq">
+        <summary>Can I add TuneVis to my phone's home screen?</summary>
+        <p>Yes. On iPhone, open TuneVis in Safari, tap Share, then "Add to Home Screen". On Android, open it in Chrome, tap the menu, then "Add to Home screen" or "Install app". It then opens full screen like an app.</p>
+      </details>
+      <details class="faq">
+        <summary>Is TuneVis connected to Spotify?</summary>
+        <p>TuneVis uses Spotify's public Web API for song details and Spotify's embedded player for playback, but it's an independent project that isn't affiliated with or endorsed by Spotify. You don't sign in to TuneVis with Spotify, and TuneVis can't see or change your Spotify account.</p>
+      </details>
+      <details class="faq">
+        <summary>Does TuneVis cost anything?</summary>
+        <p>No, TuneVis is free to use.</p>
+      </details>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <nav class="footer-links" aria-label="Site">
+      <a href="about.html">About</a>
+      <a href="faq.html" aria-current="page">Help &amp; FAQ</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </nav>
+    <p class="footer-credit">Built with the Spotify Web API, ReccoBeats &amp; Last.fm &middot; &copy; 2026 TuneVis</p>
+    <p class="footer-note">TuneVis isn't affiliated with or endorsed by Spotify.</p>
+  </footer>
+
+  <script type="module" src="scripts/content-page.js"></script>
+  <script type="module" src="scripts/account-nav.js"></script>
+</body>
+</html>

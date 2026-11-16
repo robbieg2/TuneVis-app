@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About TuneVis — How the Music Recommender Works</title>
+  <meta name="theme-color" content="#121212">
+  <link rel="canonical" href="https://tunevis.vercel.app/about.html">
+  <meta property="og:url" content="https://tunevis.vercel.app/about.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "TuneVis",
+    "url": "https://tunevis.vercel.app/",
+    "description": "An interactive music recommender: explore any song's audio features, discover tracks that sound alike, and rank your favourite albums, artists and songs.",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "Any (web browser)",
+    "image": "https://tunevis.vercel.app/icons/og-image.png",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" }
+  }
+  </script>
+  <meta name="description" content="What TuneVis does, how its similarity scores and recommendations work, and where its music data comes from.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TuneVis">
+  <meta property="og:title" content="About TuneVis — How the Music Recommender Works">
+  <meta property="og:description" content="What TuneVis does, how its similarity scores and recommendations work, and where its music data comes from.">
+  <meta property="og:image" content="https://tunevis.vercel.app/icons/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="TuneVis logo with audio bars">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://tunevis.vercel.app/icons/og-image.png">
+  <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="TuneVis">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+<body class="page-flex content-page-body">
+  <div class="bg-layer">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+    <div class="bg-circle c4"></div>
+  </div>
+
+  <header class="features-header">
+    <button id="back-btn" aria-label="Back">&#8592;</button>
+
+    <a href="home.html" class="header-logo-link" title="TuneVis home">
+      <div class="header-logo-inner">
+        <svg class="header-logo-bars" viewBox="0 0 80 34" preserveAspectRatio="xMidYMid meet">
+          <defs>
+          <linearGradient id="tv-bars" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#139a45"/>
+            <stop offset="1" stop-color="#3ff08a"/>
+          </linearGradient>
+        </defs>
+        <g class="audio-bars">
+            <rect x="4"  y="13" width="5" height="8"  rx="2.5"/>
+            <rect x="15" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="26" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="37" y="2"  width="5" height="30" rx="2.5"/>
+            <rect x="48" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="59" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="70" y="13" width="5" height="8"  rx="2.5"/>
+          </g>
+        </svg>
+        <span class="header-logo-text">TuneVis</span>
+      </div>
+    </a>
+  </header>
+
+  <main class="content-page">
+    <article class="content-article">
+      <p class="content-kicker">About</p>
+      <h1>Music, visualised.</h1>
+      <p class="content-lead">TuneVis is an interactive music recommender. Pick any song and see what it's made of: how danceable, energetic or acoustic it is. Then discover tracks that genuinely sound like it, and keep track of your own favourites with rankings and star ratings.</p>
+
+      <h2>What you can do</h2>
+      <div class="feature-cards">
+        <section class="feature-card">
+          <h3>Explore a song's sound</h3>
+          <p>Search for any track to open its audio-features dashboard: danceability, energy, valence (how happy it sounds), speechiness, acousticness, instrumentalness and tempo, shown as interactive charts.</p>
+        </section>
+        <section class="feature-card">
+          <h3>Find songs that sound alike</h3>
+          <p>TuneVis gathers songs related to your track, then scores each one by how closely its audio features match. Compare them on a radar chart, a similarity bar chart and a scatter plot, and open any of them to keep exploring.</p>
+        </section>
+        <section class="feature-card">
+          <h3>Rank what you love</h3>
+          <p>Rank an album's tracks, an artist's top tracks or their albums, or build all-time favourite artist and track lists. Give albums a star rating out of five, in half-star steps.</p>
+        </section>
+        <section class="feature-card">
+          <h3>Keep it all in one place</h3>
+          <p>With a free TuneVis account you can save your rankings, sort them by date or stars, organise them into folders like "Favourites" or "2026 Releases", and pick up your recently viewed tracks on any device.</p>
+        </section>
+      </div>
+
+      <h2>How the recommendations work</h2>
+      <p>Each song is described by six audio features measured on a 0–1 scale. For every candidate song, TuneVis measures how far each of its features is from the song you picked, averages those distances, and turns the result into a similarity score: 100% means the two songs have near-identical features, 0% means they couldn't be more different.</p>
+      <p>Candidates come from songs listeners connect with your track. When none are available, TuneVis falls back to popular songs by similar artists. Some songs, often very new or older catalogue tracks, don't have audio features yet; when that happens you'll see a note instead of the charts.</p>
+
+      <h2>Where the data comes from</h2>
+      <ul class="content-list">
+        <li><strong>Spotify Web API</strong>: song, artist and album details, artwork, search, and the embedded player.</li>
+        <li><strong>ReccoBeats</strong>: the audio features behind every chart and similarity score.</li>
+        <li><strong>Last.fm</strong>: trending charts, genre charts and related songs and artists.</li>
+      </ul>
+      <p>TuneVis plays music through Spotify's embedded player. If a track won't play, sign in to Spotify in another tab or in the Spotify app, then try again.</p>
+      <p class="content-note">TuneVis is an independent project. It isn't affiliated with, endorsed by or sponsored by Spotify, ReccoBeats or Last.fm. All music, artwork and trademarks belong to their respective owners.</p>
+
+      <div class="content-cta">
+        <a href="home.html"><button type="button">Start exploring</button></a>
+        <a href="faq.html"><button type="button" class="secondary-btn">Help &amp; FAQ</button></a>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <nav class="footer-links" aria-label="Site">
+      <a href="about.html" aria-current="page">About</a>
+      <a href="faq.html">Help &amp; FAQ</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </nav>
+    <p class="footer-credit">Built with the Spotify Web API, ReccoBeats &amp; Last.fm &middot; &copy; 2026 TuneVis</p>
+    <p class="footer-note">TuneVis isn't affiliated with or endorsed by Spotify.</p>
+  </footer>
+
+  <script type="module" src="scripts/content-page.js"></script>
+  <script type="module" src="scripts/account-nav.js"></script>
+</body>
+</html>

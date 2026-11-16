@@ -10,7 +10,6 @@ const searchInput = document.getElementById("search-input");
 const searchBtn   = document.getElementById("search-btn");
 const resultsDiv  = document.getElementById("search-results");
 const searchWrapper = document.getElementById("search-carousel-wrapper");
-const infoBtn     = document.getElementById("info-btn");
 
 let currentToken = null;
 
@@ -311,33 +310,6 @@ function updateCarouselButtons(carousel, leftBtn, rightBtn) {
   }
 }
 
-// ── Info modal ───────────────────────────────────────────────────────────────
-
-function initInfoModal() {
-  infoBtn.addEventListener("click", () => {
-    let modal = document.getElementById("site-info-modal");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "site-info-modal";
-      modal.className = "site-info-modal";
-      modal.innerHTML = `
-        <div class="site-info-card">
-          <button class="site-info-close" aria-label="Close">X</button>
-          <h2>About TuneVis</h2>
-          <p>TuneVis compares songs using audio features such as energy, danceability and acousticness. It then ranks similar songs based on the scores of these features.</p>
-          <p>Recommendations are filtered either by 'similar songs' or 'similar artists' based on availability, but unfortunately not all songs are available to view.</p>
-          <p>Explore recommendations, compare similarity scores, and visualise how tracks relate to each other.</p>
-          <p>TuneVis plays tracks through Spotify's embedded player. If playback doesn't work, log into Spotify in another tab or in the desktop app.</p>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      modal.querySelector(".site-info-close").addEventListener("click", () => modal.classList.remove("open"));
-      modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("open"); });
-    }
-    modal.classList.add("open");
-  });
-}
-
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -380,7 +352,6 @@ async function init() {
   });
 
   initTabs();
-  initInfoModal();
 
   const trendingGenreSelect = document.getElementById("trending-genre-select");
   if (trendingGenreSelect) {

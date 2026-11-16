@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TuneVis — Checking your link</title>
+  <title>Checking Your Link — TuneVis</title>
   <meta name="theme-color" content="#121212">
+  <meta name="robots" content="noindex">
   <meta name="description" content="Explore a song's audio features, find similar tracks and rank your favourite artists, albums and songs.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TuneVis">
@@ -70,8 +71,15 @@
     </div>
   </main>
 
-  <footer>
-    <p>TuneVis | Built using Spotify API, ReccoBeats &amp; Last.fm API</p>
+  <footer class="site-footer">
+    <nav class="footer-links" aria-label="Site">
+      <a href="about.html">About</a>
+      <a href="faq.html">Help &amp; FAQ</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </nav>
+    <p class="footer-credit">Built with the Spotify Web API, ReccoBeats &amp; Last.fm &middot; &copy; 2026 TuneVis</p>
+    <p class="footer-note">TuneVis isn't affiliated with or endorsed by Spotify.</p>
   </footer>
 
   <script type="module" src="scripts/auth-pages.js"></script>

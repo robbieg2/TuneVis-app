@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — TuneVis</title>
+  <meta name="theme-color" content="#121212">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="This page couldn't be found.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TuneVis">
+  <meta property="og:title" content="Page Not Found — TuneVis">
+  <meta property="og:description" content="This page couldn't be found.">
+  <meta property="og:image" content="https://tunevis.vercel.app/icons/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="TuneVis logo with audio bars">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://tunevis.vercel.app/icons/og-image.png">
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="TuneVis">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/style.css">
+</head>
+<body class="page-flex content-page-body">
+  <div class="bg-layer">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+    <div class="bg-circle c4"></div>
+  </div>
+
+  <header class="features-header">
+    <button id="back-btn" aria-label="Back">&#8592;</button>
+
+    <a href="/home.html" class="header-logo-link" title="TuneVis home">
+      <div class="header-logo-inner">
+        <svg class="header-logo-bars" viewBox="0 0 80 34" preserveAspectRatio="xMidYMid meet">
+          <defs>
+          <linearGradient id="tv-bars" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#139a45"/>
+            <stop offset="1" stop-color="#3ff08a"/>
+          </linearGradient>
+        </defs>
+        <g class="audio-bars">
+            <rect x="4"  y="13" width="5" height="8"  rx="2.5"/>
+            <rect x="15" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="26" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="37" y="2"  width="5" height="30" rx="2.5"/>
+            <rect x="48" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="59" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="70" y="13" width="5" height="8"  rx="2.5"/>
+          </g>
+        </svg>
+        <span class="header-logo-text">TuneVis</span>
+      </div>
+    </a>
+  </header>
+
+  <main class="content-page">
+    <article class="content-article">
+      <div class="not-found">
+        <p class="not-found-code">404</p>
+        <h1>This page skipped a beat</h1>
+        <p class="content-lead">We couldn't find the page you were looking for. It may have moved, or the link may be mistyped.</p>
+        <div class="content-cta">
+          <a href="/home.html"><button type="button">Search for a song</button></a>
+          <a href="/rankings.html"><button type="button" class="secondary-btn">Go to rankings</button></a>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <nav class="footer-links" aria-label="Site">
+      <a href="/about.html">About</a>
+      <a href="/faq.html">Help &amp; FAQ</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </nav>
+    <p class="footer-credit">Built with the Spotify Web API, ReccoBeats &amp; Last.fm &middot; &copy; 2026 TuneVis</p>
+    <p class="footer-note">TuneVis isn't affiliated with or endorsed by Spotify.</p>
+  </footer>
+
+  <script type="module" src="/scripts/content-page.js"></script>
+  <script type="module" src="/scripts/account-nav.js"></script>
+</body>
+</html>
