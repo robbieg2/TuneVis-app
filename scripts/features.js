@@ -13,7 +13,8 @@ import {
 import {
 	drawMultiRadarChart,
 	drawSimilarityBarChart,
-	drawSimilarityScatter
+	drawSimilarityScatter,
+	alignChartHeights
 } from "./features-charts.js";
 
 import { getSpotifyToken, saveToRecent, esc } from "./auth.js";
@@ -427,6 +428,7 @@ function renderShuffleView() {
 	drawMultiRadarChart(radarSeries);
 	drawSimilarityBarChart(top10);
 	drawSimilarityScatter(seed, scatterRows);
+	alignChartHeights();
 }	
 
 // Make artist names on the track header clickable — opens a top-tracks modal

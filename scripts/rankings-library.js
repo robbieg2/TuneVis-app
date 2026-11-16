@@ -39,6 +39,9 @@ let foldersAvailable = false;   // false until the folders migration has been ru
 let active = "all";             // "all" or a folder id
 let typeFilter = "all";         // a TYPE_TABS id
 let sortBy = readSortPreference(); // "recent" or "rating"
+let expanded = false;           // long lists show the first COLLAPSED_COUNT until expanded
+const COLLAPSED_COUNT = 6;
+const CHEVRON = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6"/></svg>`;
 let loadId = 0;
 
 // The chosen sort is a per-browser convenience; the list works without it.
@@ -224,7 +227,27 @@ function renderList() {
             : `<p class="tab-empty">Nothing saved yet. Build a ranking and press Save to keep it here.</p>`;
         return;
     }
-    shown.forEach(r => listEl.appendChild(rankingRow(r)));
+
+    // A long list shows its first few, with an arrow button to show the rest.
+    const collapsible = shown.length > COLLAPSED_COUNT;
+    const visible = collapsible && !expanded ? shown.slice(0, COLLAPSED_COUNT) : shown;
+    visible.forEach(r => listEl.appendChild(rankingRow(r)));
+    if (!collapsible) return;
+
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "show-more-btn" + (expanded ? " expanded" : "");
+    more.setAttribute("aria-expanded", String(expanded));
+    more.innerHTML = expanded
+        ? `Show less ${CHEVRON}`
+        : `Show all ${shown.length} ${CHEVRON}`;
+    more.addEventListener("click", () => {
+        expanded = !expanded;
+        renderList();
+        // After collapsing, bring the top of the list back into view.
+        if (!expanded) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    listEl.appendChild(more);
 }
 
 // ── Modals ─────────────────────────────────────────────────────────────

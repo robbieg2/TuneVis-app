@@ -325,7 +325,7 @@ export function drawSimilarityBarChart(rows = []) {
     // Sized to its card (not the window), so it fits on any screen.
     const width = Math.max(280, Math.min(760, container.clientWidth || 760));
     const isMobile = width < 560;
-    const height = isMobile ? Math.max(260, safeRows.length * 32 + 60) : 480;
+    const height = fitHeights.bar ?? (isMobile ? Math.max(260, safeRows.length * 32 + 60) : 480);
     const margin = {
         top: 20,
         right: isMobile ? 38 : 70,
@@ -471,7 +471,7 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
     const margin = { top: 20, right: 20, bottom: 50, left: 60 };
     function measure() {
         width = Math.max(280, Math.min(560, container.clientWidth || 560));
-        height = width < 480 ? Math.round(width * 0.9) : 450;
+        height = fitHeights.scatter ?? (width < 480 ? Math.round(width * 0.9) : 450);
         margin.left = width < 480 ? 52 : 60;
     }
 
@@ -712,6 +712,36 @@ let lastScatterRender = null;
 let lastChartWidth = window.innerWidth;
 let chartResizeTimer = null;
 
+// Heights the bar and scatter charts are drawn at in the desktop three-column layout
+// (null = their usual height). See alignChartHeights().
+let fitHeights = { bar: null, scatter: null };
+
+// Side by side on desktop, the radar (square, plus its legend) is the tallest, which
+// left the other two cards with empty space underneath. Draw the bar and scatter
+// charts down to the bottom of the radar's content so all three line up. Stacked
+// layouts (tablets, phones) keep the usual heights.
+export function alignChartHeights() {
+    const grid = document.querySelector(".grid-3");
+    const radar = document.getElementById("sim-radar");
+    const bar = document.getElementById("sim-bar");
+    const scatter = document.getElementById("sim-scatter");
+    const sideBySide = grid && getComputedStyle(grid).gridTemplateColumns.split(" ").length >= 3;
+
+    const next = { bar: null, scatter: null };
+    if (sideBySide && radar?.querySelector("svg") && bar && scatter) {
+        const bottom = radar.getBoundingClientRect().bottom;
+        const hint = scatter.parentElement?.querySelector(".chart-hint");
+        const hintSpace = hint ? hint.getBoundingClientRect().height + 8 : 0;
+        const clamp = h => Math.max(300, Math.min(720, Math.round(h)));
+        next.bar = clamp(bottom - bar.getBoundingClientRect().top);
+        next.scatter = clamp(bottom - scatter.getBoundingClientRect().top - hintSpace);
+    }
+    if (next.bar === fitHeights.bar && next.scatter === fitHeights.scatter) return;
+    fitHeights = next;
+    if (lastBarRows) drawSimilarityBarChart(lastBarRows);
+    lastScatterRender?.();
+}
+
 window.addEventListener("resize", () => {
     clearTimeout(chartResizeTimer);
     chartResizeTimer = setTimeout(() => {
@@ -719,5 +749,6 @@ window.addEventListener("resize", () => {
         lastChartWidth = window.innerWidth;
         if (lastBarRows) drawSimilarityBarChart(lastBarRows);
         lastScatterRender?.();
+        alignChartHeights();
     }, 200);
 });

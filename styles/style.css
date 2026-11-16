@@ -20,6 +20,14 @@ body.page-flex {
 	flex-direction: column;
 }
 
+/* Sections keep their natural height. Without this, a page taller than the screen
+   squeezed them to fit (body is height: 100%), and on phones the big logo header
+   was pushed up under the top edge. The footer still sits at the bottom of short
+   pages via its margin-top: auto. */
+body.page-flex > * {
+	flex-shrink: 0;
+}
+
 body::before {
 	content: "";
 	position: fixed;
@@ -3116,14 +3124,6 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
     backdrop-filter: blur(6px);
 }
 
-.section-nav-wrap {
-    display: flex;
-    justify-content: center;
-    padding: 0 16px;
-}
-
-.section-nav-wrap .section-nav { margin-top: 4px; }
-
 .section-nav-link {
     display: inline-flex;
     align-items: center;
@@ -3277,3 +3277,38 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
         padding: 0 16px;
     }
 }
+
+/* Saved rankings: "Show all" / "Show less" under a long list. */
+.show-more-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 4px;
+    padding: 11px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.show-more-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.show-more-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.2s;
+}
+
+.show-more-btn.expanded svg { transform: rotate(180deg); }
