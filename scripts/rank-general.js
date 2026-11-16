@@ -384,6 +384,10 @@ function renderRankList() {
         rankListEl.appendChild(rankRow(rankedIds[i] ?? null, i));
     }
     rankTitleEl.textContent = `Your ranking (${rankedIds.length}/${rankSize})`;
+    // Phones show one column at a time; the tab carries the count so progress is
+    // visible from the popular list too.
+    const mobileTab = document.querySelector('.rank-mobile-tabs .tab-btn[data-panel="ranking"]');
+    if (mobileTab) mobileTab.textContent = rankTitleEl.textContent;
 }
 
 function renderAll() {

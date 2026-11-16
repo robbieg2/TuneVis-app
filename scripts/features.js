@@ -146,6 +146,28 @@ function attachSimilarityHelpPopover() {
 	});
 	
 	btn.addEventListener("mouseleave", () => hideTooltip());
+
+	// Touch screens have no hover: a tap on "?" toggles the explanation and a tap
+	// anywhere else closes it.
+	btn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		const el = tooltipEl();
+		if (el.style.display === "block" && el.dataset.source === "sim-help") {
+			hideTooltip();
+			return;
+		}
+		showTooltip(html);
+		el.dataset.source = "sim-help";
+		positionTooltipAtElement(btn);
+	});
+
+	document.addEventListener("click", () => {
+		const el = document.getElementById("chart-tooltip");
+		if (el?.dataset.source === "sim-help") {
+			delete el.dataset.source;
+			hideTooltip();
+		}
+	});
 }
 
 // Hide visualisations when no audio features are available

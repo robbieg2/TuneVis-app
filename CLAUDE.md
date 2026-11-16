@@ -32,11 +32,12 @@ Music discovery, audio-feature analysis and ranking web app. Vanilla HTML/CSS/JS
 - Pages that need footer pinning use `class="page-flex"` on body.
 - Canvas export loads images with `crossOrigin="anonymous"` and falls back to a placeholder on failure to avoid tainting.
 - Any API- or URL-derived text interpolated into an `innerHTML` template must go through `esc()` from `auth.js` (names, subtitles, image URLs, ids in iframe `src`). `features.html?track=` takes raw JSON from the URL, so skipping this is an XSS hole. d3 `.text()` is already safe.
+- **Mobile is supported on every page** (phones from 320px up). All mobile rules live in the "Responsive: tablets and phones" section at the end of `style.css` (768px, 480px, 360px), grouped by page; add new ones there. Check new UI at 320, 375 and 768px wide as well as desktop. Rules of thumb: grid columns use `minmax(0, 1fr)` (a plain `1fr` grows to fit wide content like the recommendations carousel); inputs are 16px on mobile (smaller makes iOS zoom); D3 charts size from their container's `clientWidth`, not `window.innerWidth`, and `features-charts.js` redraws them when the window width changes; JS that sets inline `display` needs `!important` in CSS to hide it on mobile.
+- `.bg-layer` is `position: fixed; overflow: hidden` so the decorative circles never widen the page.
 
 ## Known state
 - `api/token.js` is the Client Credentials proxy; it reads `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` from Vercel env vars. Local testing needs `vercel dev` with those set.
 - Spotify user login (personalised experience) existed previously but was removed after Spotify tightened developer registration requirements. Don't reintroduce user-auth flows without checking current Spotify policy.
 - The Last.fm API key is hard-coded in `home.js`, `features.js` and `rank-general.js`; the 401-retry fetch wrapper is duplicated per script.
-- Accounts are built (Nov 2026, `feature/accounts`) and tested against a local mock of Supabase, not yet against a real project. Supabase's built-in email only reaches project team members until custom SMTP is set up.
-- On phones the decorative `.bg-circle` elements widen the page to ~535px, so mobile browsers zoom out slightly. Predates accounts.
+- Accounts are live on the developer's Supabase project. Supabase's built-in email only reaches project team members until custom SMTP is set up.
 - Ideas not yet built: genre-aware recommendations on features page, accessibility pass.

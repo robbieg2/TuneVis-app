@@ -321,12 +321,18 @@ export function drawSimilarityBarChart(rows = []) {
     container.innerHTML = "";
 	
 	const safeRows = Array.isArray(rows) ? rows : [];
-    const isMobile = window.innerWidth < 700;
-    const width = isMobile
-        ? Math.max(340, window.innerWidth - 32)
-        : Math.min(760, container.clientWidth || 760);
-    const height = isMobile ? 380 : 480;
-    const margin = { top: 20, right: isMobile ? 20 : 70, bottom: 40, left: isMobile ? 130 : 220 };
+	lastBarRows = safeRows;
+    // Sized to its card (not the window), so it fits on any screen.
+    const width = Math.max(280, Math.min(760, container.clientWidth || 760));
+    const isMobile = width < 560;
+    const height = isMobile ? Math.max(260, safeRows.length * 32 + 60) : 480;
+    const margin = {
+        top: 20,
+        right: isMobile ? 38 : 70,
+        bottom: 40,
+        left: isMobile ? Math.round(width * 0.42) : 220,
+    };
+    const labelChars = isMobile ? Math.max(12, Math.floor((margin.left - 12) / 6.2)) : 40;
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
@@ -355,11 +361,12 @@ export function drawSimilarityBarChart(rows = []) {
                 const name = r?.track?.name || id;
                 const artists = (r?.track?.artists || []).join(", ");
                 const label = `${name} — ${artists}`;
-                const maxLen = isMobile ? 20 : 40; return label.length > maxLen ? label.slice(0, maxLen) + "…" : label;
+                return label.length > labelChars ? label.slice(0, labelChars) + "…" : label;
             })
         )
         .selectAll("text")
-        .style("fill", "#fff");
+        .style("fill", "#fff")
+        .style("font-size", isMobile ? "11px" : null);
 
     g.selectAll("rect.bar-rect")
         .data(safeRows, (d) => d.id)
@@ -458,9 +465,15 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
     const xSel = document.getElementById("x-feature");
     const ySel = document.getElementById("y-feature");
 
-    const width = Math.min(560, container.clientWidth || 560);
-    const height = 450;
+    // Measured on every render, so a redraw after rotating a phone fits the new width.
+    let width = 560;
+    let height = 450;
     const margin = { top: 20, right: 20, bottom: 50, left: 60 };
+    function measure() {
+        width = Math.max(280, Math.min(560, container.clientWidth || 560));
+        height = width < 480 ? Math.round(width * 0.9) : 450;
+        margin.left = width < 480 ? 52 : 60;
+    }
 
     function getVal(f, key) {
         const v = Number(f?.[key]);
@@ -508,6 +521,7 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
 
     function render() {
         container.innerHTML = "";
+        measure();
 
         const xKey = xSel?.value || "energy";
         const yKey = ySel?.value || "valence";
@@ -570,7 +584,7 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
         g.append("text")
             .attr("transform", "rotate(-90)")
             .attr("x", -innerH / 2)
-            .attr("y", -45)
+            .attr("y", -(margin.left - 14))
             .attr("text-anchor", "middle")
             .attr("fill", "#fff")
             .text(yKey);
@@ -683,6 +697,27 @@ export function drawSimilarityScatter(seedFeatures, rows = []) {
     }
 
     render();
-    if (xSel) xSel.addEventListener("change", render);
-    if (ySel) ySel.addEventListener("change", render);
+    // Assigned rather than added: this function runs again on every shuffle, and
+    // addEventListener would stack a redraw per call.
+    if (xSel) xSel.onchange = render;
+    if (ySel) ySel.onchange = render;
+    lastScatterRender = render;
 }
+
+// Redraw the width-sized charts when the screen width changes (rotating a phone,
+// resizing a window). Height-only changes, like a phone's address bar hiding while
+// scrolling, are ignored.
+let lastBarRows = null;
+let lastScatterRender = null;
+let lastChartWidth = window.innerWidth;
+let chartResizeTimer = null;
+
+window.addEventListener("resize", () => {
+    clearTimeout(chartResizeTimer);
+    chartResizeTimer = setTimeout(() => {
+        if (Math.abs(window.innerWidth - lastChartWidth) < 20) return;
+        lastChartWidth = window.innerWidth;
+        if (lastBarRows) drawSimilarityBarChart(lastBarRows);
+        lastScatterRender?.();
+    }, 200);
+});
