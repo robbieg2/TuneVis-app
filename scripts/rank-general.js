@@ -858,14 +858,12 @@ async function init() {
     }
 }
 
-// Browser back/forward cache restores the exact DOM snapshot, including
-// whatever was typed into the search box — clear it so returning to this
-// page via back/forward doesn't show stale leftover text.
-window.addEventListener("pageshow", (e) => {
-    if (e.persisted) {
-        if (trackSearchInput) trackSearchInput.value = "";
-        hideSuggestions();
-    }
+// Coming back to this page (Back button, or the browser restoring it) must show an
+// empty search box: browsers either restore a frozen copy of the page or refill
+// typed text into inputs, so clear on every pageshow.
+window.addEventListener("pageshow", () => {
+    if (trackSearchInput) trackSearchInput.value = "";
+    hideSuggestions();
 });
 
 init();

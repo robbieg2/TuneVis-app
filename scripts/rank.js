@@ -6,7 +6,7 @@
 // finished, read-only list (rank-view.js); Edit switches to the two-column workspace.
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
-import { initSaveButton, KIND_LABELS } from "./saved-rankings.js";
+import { initSaveButton, KIND_LABELS, listRankings, rankingUrl } from "./saved-rankings.js";
 import { createStarRating, parseRating, starsText, starsHtml, formatRating } from "./star-rating.js";
 import { setViewMode, renderRankView } from "./rank-view.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
@@ -563,12 +563,51 @@ function applyListLabels() {
 }
 
 // ── Finished-list view and edit mode ──────────────────────────────────
+// An artist's Albums & EPs ranking links each album to its own album ranking: the
+// saved one if there is one (shown with its stars), otherwise a fresh one to start.
+// Loaded once per visit, when the albums list is first shown as a finished list.
+let savedAlbumRankings = null;   // Map: Spotify album id → the newest saved album ranking
+
+async function loadSavedAlbumRankings() {
+    if (savedAlbumRankings) return;
+    const map = new Map();
+    try {
+        for (const r of (await listRankings()) || []) {   // newest first
+            if (r.kind === "album" && r.source_id && !map.has(r.source_id)) map.set(r.source_id, r);
+        }
+    } catch (err) {
+        console.error("[accounts] Could not load album rankings:", err);
+    }
+    savedAlbumRankings = map;
+}
+
+function albumLink(album) {
+    const saved = savedAlbumRankings?.get(album.id);
+    if (saved) {
+        const rating = saved.rating != null ? Number(saved.rating) : null;
+        const count = saved.item_ids?.length || 0;
+        return {
+            href: rankingUrl(saved),
+            badgeHtml: rating
+                ? `${starsHtml(rating, { size: 13 })}<span class="rank-view-badge-value">${formatRating(rating)}</span>`
+                : `<span class="rank-view-badge-muted">${count} ranked</span>`,
+        };
+    }
+    return {
+        href: `rank.html?type=album&id=${encodeURIComponent(album.id)}`,
+        badgeHtml: savedAlbumRankings ? `<span class="rank-view-badge-muted">Start ranking &#8250;</span>` : "",
+    };
+}
+
 function viewItems() {
     const round = false;
     return rankedIds
         .map(id => allTracks.find(t => t.id === id))
         .filter(Boolean)
-        .map(t => ({ name: t.name, subtitle: itemSubtitle(t), image: t.image, round }));
+        .map(t => ({
+            name: t.name, subtitle: itemSubtitle(t), image: t.image, round,
+            ...(isAlbumsList() ? albumLink(t) : {}),
+        }));
 }
 
 function renderView() {
@@ -594,6 +633,9 @@ function enterView() {
     setViewMode(true);
     syncUrl();
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (isAlbumsList()) {
+        loadSavedAlbumRankings().then(() => { if (viewing && isAlbumsList()) renderView(); });
+    }
 }
 
 function enterEdit() {
@@ -1009,13 +1051,17 @@ async function init() {
     }
 }
 
-// Browser back/forward cache restores the exact DOM snapshot, including
-// whatever was typed into the search box — clear it so returning to this
-// page via back/forward doesn't show stale leftover text.
-window.addEventListener("pageshow", (e) => {
-    if (e.persisted) {
-        if (trackSearchInput) trackSearchInput.value = "";
-        hideSuggestions();
+// Coming back to this page (Back button, or the browser restoring it) must show an
+// empty search box: browsers either restore a frozen copy of the page or refill
+// typed text into inputs, so clear on every pageshow.
+window.addEventListener("pageshow", e => {
+    if (trackSearchInput) trackSearchInput.value = "";
+    hideSuggestions();
+    if (meta && isAlbumsList()) filterAlbums("");   // the box filters the albums list
+    // Back from an album's own ranking: its stars may have changed, so reload them.
+    if (e.persisted && viewing && meta && isAlbumsList()) {
+        savedAlbumRankings = null;
+        loadSavedAlbumRankings().then(() => { if (viewing && isAlbumsList()) renderView(); });
     }
 });
 

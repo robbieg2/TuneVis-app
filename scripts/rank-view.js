@@ -16,7 +16,9 @@ export function setViewMode(viewing) {
     if (editEl) editEl.hidden = viewing;
 }
 
-// items: [{ name, subtitle, image, round }]
+// items: [{ name, subtitle, image, round, href?, badgeHtml? }]
+// With href the whole row is a link (e.g. an artist's album → its own album ranking).
+// badgeHtml is trusted markup built by the caller (stars, a status label).
 export function renderRankView({ title, meta = "", items = [], emptyText = "Nothing ranked yet." }) {
     if (!viewEl) return;
     titleEl.textContent = title;
@@ -26,8 +28,8 @@ export function renderRankView({ title, meta = "", items = [], emptyText = "Noth
         listEl.innerHTML = `<li class="rank-view-empty">${esc(emptyText)}</li>`;
         return;
     }
-    listEl.innerHTML = items.map((item, i) => `
-        <li class="rank-view-item${i < 3 ? ` podium podium-${i + 1}` : ""}">
+    listEl.innerHTML = items.map((item, i) => {
+        const inner = `
             <span class="rank-view-num">${i + 1}</span>
             ${item.image
                 ? `<img class="rank-view-img${item.round ? " round" : ""}" src="${esc(item.image)}" alt="">`
@@ -36,5 +38,10 @@ export function renderRankView({ title, meta = "", items = [], emptyText = "Noth
                 <span class="rank-view-name">${esc(item.name)}</span>
                 ${item.subtitle ? `<span class="rank-view-sub">${esc(item.subtitle)}</span>` : ""}
             </div>
-        </li>`).join("");
+            ${item.badgeHtml ? `<span class="rank-view-badge">${item.badgeHtml}</span>` : ""}`;
+        const classes = `rank-view-item${i < 3 ? ` podium podium-${i + 1}` : ""}${item.href ? " has-link" : ""}`;
+        return item.href
+            ? `<li class="${classes}"><a class="rank-view-link" href="${esc(item.href)}">${inner}</a></li>`
+            : `<li class="${classes}">${inner}</li>`;
+    }).join("");
 }

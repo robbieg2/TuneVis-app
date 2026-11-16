@@ -157,9 +157,12 @@ if (searchInput) {
 // Browser back/forward cache restores the exact DOM snapshot, including
 // whatever was typed into the search box — clear it so returning to this
 // page via back/forward doesn't show stale leftover text.
-window.addEventListener("pageshow", (e) => {
-    if (e.persisted) {
-        if (searchInput) searchInput.value = "";
-        if (resultsEl) resultsEl.innerHTML = "";
-    }
+// Coming back to this page (Back button, or the browser restoring it) must show an
+// empty search box. Browsers either restore a frozen copy of the page (persisted) or
+// refill typed text into inputs, so clear on every pageshow, not just persisted ones.
+window.addEventListener("pageshow", () => {
+    clearTimeout(searchDebounce);
+    searchRequestId++;   // ignore any search still in flight
+    if (searchInput) searchInput.value = "";
+    if (resultsEl) resultsEl.innerHTML = "";
 });

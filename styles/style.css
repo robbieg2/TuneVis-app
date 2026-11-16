@@ -3,9 +3,9 @@ html, body {
 	height: 100%;
 }
 
-html {
-	background: #121212;
-}
+/* No background on html: body's colour then paints the whole canvas, underneath the
+   fixed .bg-layer (z-index -1). Giving html its own background made body paint its
+   colour over the layer and hid the coloured glow. */
 
 /* Pages use the whole screen (viewport-fit=cover in each page's viewport tag), so
    in the home-screen app the background runs under the status bar and home
@@ -3338,3 +3338,52 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 }
 
 .show-more-btn.expanded svg { transform: rotate(180deg); }
+
+/* Finished-list rows that link somewhere (an artist's album → its own ranking). */
+.rank-view-item.has-link { padding: 0; }
+
+.rank-view-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 12px;
+    transition: background 0.15s;
+}
+
+.rank-view-link:hover { background: rgba(255, 255, 255, 0.05); }
+.rank-view-link:hover .rank-view-name { text-decoration: underline; }
+
+.rank-view-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 8px;
+}
+
+.rank-view-badge-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffc94d;
+}
+
+.rank-view-badge-muted {
+    font-size: 12px;
+    opacity: 0.6;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .rank-view-link { padding: 9px 12px; gap: 12px; }
+}
+
+@media (max-width: 400px) {
+    /* Tight phones: stars only, without the number. */
+    .rank-view-badge-value { display: none; }
+}
