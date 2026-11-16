@@ -1971,3 +1971,51 @@ button:disabled {
         font-size: 12px;
     }
 }
+
+/* Landing page: small account links under the Log in button. */
+.landing-links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 16px;
+    padding: 0 16px;
+    font-size: 13px;
+}
+
+.landing-links a {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+}
+
+.landing-links a:hover {
+    color: #1db954;
+    text-decoration: underline;
+}
+
+/* Home page: Recently Viewed prompt for signed-out visitors. */
+.recent-signin {
+    max-width: 420px;
+    margin: 18px auto;
+    padding: 22px 20px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+}
+
+.recent-signin-title {
+    font-weight: 600;
+    margin: 0 0 6px;
+}
+
+.recent-signin-sub {
+    font-size: 13px;
+    opacity: 0.7;
+    margin: 0 0 16px;
+}
+
+.recent-signin-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}

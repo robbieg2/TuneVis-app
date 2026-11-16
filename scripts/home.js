@@ -1,5 +1,6 @@
 // home.js
 import { getSpotifyToken, saveToRecent, getRecent, syncRecent, esc } from "./auth.js";
+import { getUser } from "./supabase.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const TRENDING_CACHE_KEY = "tunevis_trending_cache";
@@ -204,18 +205,31 @@ async function loadTrending(genre = "all") {
 
 let recentRequestId = 0;
 
-// Shows this browser's list straight away, then, if signed in to a TuneVis account,
-// the list merged with the account's (re-rendered only if it actually changed, since
-// every card holds a Spotify embed).
-function loadRecent() {
-  const local = getRecent();
+// Recently Viewed belongs to a TuneVis account: signed-out visitors get a prompt to log
+// in instead. Signed in, this browser's cached copy shows straight away, then the list
+// merged with the account's (re-rendered only if it changed, since every card holds a
+// Spotify embed).
+async function loadRecent() {
   const requestId = ++recentRequestId;
-  renderRecent(local);
-  syncRecent().then(merged => {
-    if (!merged || requestId !== recentRequestId) return;
-    const ids = list => list.map(t => t.id).join(",");
-    if (ids(merged) !== ids(local)) renderRecent(merged);
-  });
+  const signinEl = document.getElementById("recent-signin");
+  const user = await getUser();
+  if (requestId !== recentRequestId) return;
+
+  if (!user) {
+    document.getElementById("recent-results").innerHTML = "";
+    document.getElementById("recent-empty").style.display = "none";
+    document.getElementById("recent-carousel-wrapper").style.display = "none";
+    if (signinEl) signinEl.hidden = false;
+    return;
+  }
+  if (signinEl) signinEl.hidden = true;
+
+  const local = getRecent();
+  if (local.length) renderRecent(local);
+  const merged = await syncRecent();
+  if (requestId !== recentRequestId) return;
+  const ids = list => list.map(t => t.id).join(",");
+  if (!local.length || (merged && ids(merged) !== ids(local))) renderRecent(merged ?? local);
 }
 
 function renderRecent(tracks) {
@@ -260,6 +274,11 @@ function initTabs() {
       if (target === "recent") loadRecent();
     });
   });
+
+  // ?tab=recent opens Recently Viewed, e.g. coming back from logging in via its prompt.
+  if (new URLSearchParams(window.location.search).get("tab") === "recent") {
+    document.querySelector('.tab-btn[data-tab="recent"]')?.click();
+  }
 }
 
 // ── Carousel helpers ─────────────────────────────────────────────────────────

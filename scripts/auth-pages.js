@@ -3,6 +3,7 @@
 import {
     getSupabase, getUser, safeNext, loginUrl, authErrorMessage, NOT_CONFIGURED,
 } from "./supabase.js";
+import { clearRecentCache } from "./auth.js";
 
 const MIN_PASSWORD = 8;
 const page = document.body.dataset.authPage;
@@ -70,6 +71,8 @@ async function initLogin(supabase) {
             if (!looksLikeEmail(email) || !password) return showNotice("Enter your email and password.");
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) return showNotice(authErrorMessage(error));
+            // Start from the account's own list, never a previous user's cached copy.
+            clearRecentCache();
             window.location.href = next;
         });
     });
@@ -164,6 +167,7 @@ async function initConfirm(supabase) {
 
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (error) { window.location.replace("login.html?error=link"); return; }
+    clearRecentCache();
 
     // A reset link signs the user in so they can choose a new password.
     if (type === "recovery") window.location.replace("update-password.html");
@@ -183,6 +187,7 @@ async function initAccount(supabase) {
 
     document.getElementById("sign-out-btn").addEventListener("click", async () => {
         await supabase.auth.signOut();
+        clearRecentCache();
         window.location.href = "home.html";
     });
 
@@ -213,7 +218,7 @@ async function initAccount(supabase) {
             }
             // The user no longer exists; clear this browser's session.
             await supabase.auth.signOut({ scope: "local" });
-            try { localStorage.removeItem("tunevis_recent"); } catch {}
+            clearRecentCache();
             window.location.replace("login.html?deleted=1");
         });
     });

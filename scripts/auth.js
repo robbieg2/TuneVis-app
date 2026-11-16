@@ -25,20 +25,28 @@ export async function getSpotifyToken(forceRefresh = false) {
 }
 
 // ── Recently viewed ──────────────────────────────────────────────────
-// Kept in localStorage as before. When signed in to a TuneVis account it's also kept
-// in public.recently_viewed, so the list follows the user between devices.
+// A TuneVis account feature: only recorded and shown while signed in. The account's
+// list lives in public.recently_viewed; localStorage holds a cached copy for a fast
+// first render, cleared on sign out.
 
 // track: { id, name, artists (string[]), image, viewedAt (ms; missing on old entries) }
 export function saveToRecent(track) {
   if (!track?.id) return;
   const entry = { ...track, viewedAt: Date.now() };
-  try {
-    const filtered = getRecent().filter(t => t?.id !== track.id);
-    localStorage.setItem(RECENT_KEY, JSON.stringify([entry, ...filtered].slice(0, RECENT_LIMIT)));
-  } catch (err) {
-    console.error("Could not save to recent:", err);
-  }
-  pushRecent([entry]);
+  getUser().then(user => {
+    if (!user) return;   // signed out: nothing is recorded
+    try {
+      const filtered = getRecent().filter(t => t?.id !== track.id);
+      localStorage.setItem(RECENT_KEY, JSON.stringify([entry, ...filtered].slice(0, RECENT_LIMIT)));
+    } catch (err) {
+      console.error("Could not save to recent:", err);
+    }
+    pushRecent([entry]);
+  }).catch(() => {});
+}
+
+export function clearRecentCache() {
+  try { localStorage.removeItem(RECENT_KEY); } catch {}
 }
 
 export function getRecent() {
