@@ -53,4 +53,5 @@ Music discovery, audio-feature analysis and ranking web app. Vanilla HTML/CSS/JS
 - Spotify user login (personalised experience) existed previously but was removed after Spotify tightened developer registration requirements. Don't reintroduce user-auth flows without checking current Spotify policy.
 - The Last.fm API key is hard-coded in `home.js`, `features.js` and `rank-general.js`; the 401-retry fetch wrapper is duplicated per script.
 - Accounts are live on the developer's Supabase project. Supabase's built-in email only reaches project team members until custom SMTP is set up.
+- `privacy.html` and `terms.html` still show "[contact email to be added]" (marked `<!-- TUNEVIS_CONTACT_EMAIL -->`). The developer chose to leave it for now; add their chosen contact address there when they provide one (UK GDPR expects a contact).
 - Ideas not yet built: genre-aware recommendations on features page, accessibility pass.
