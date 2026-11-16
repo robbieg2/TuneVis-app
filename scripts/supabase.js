@@ -39,25 +39,34 @@ export function getSupabase() {
     return clientPromise;
 }
 
-// The signed-in user ({ id, email }) or null. Reads the stored session; the database
-// itself checks the token on every request, so this is only used to shape the UI.
+// { id, email, username } from a Supabase user. username is the display copy kept in
+// user_metadata (profile.js); the user can write their own metadata, so it's only
+// used if it still looks like a valid username, and only for display.
+function toUser(u) {
+    if (!u) return null;
+    const name = u.user_metadata?.username;
+    const username = typeof name === "string" && /^[A-Za-z0-9_]{3,20}$/.test(name) ? name : null;
+    return { id: u.id, email: u.email || "", username };
+}
+
+// The signed-in user ({ id, email, username }) or null. Reads the stored session; the
+// database itself checks the token on every request, so this is only used to shape the UI.
 export async function getUser() {
     const supabase = await getSupabase();
     if (!supabase) return null;
     const { data } = await supabase.auth.getSession();
-    const user = data?.session?.user;
-    return user ? { id: user.id, email: user.email || "" } : null;
+    return toUser(data?.session?.user);
 }
 
-// Calls fn(user | null) now and whenever the user signs in or out (in any tab).
+// Calls fn(user | null) now and whenever the user signs in or out or their account
+// changes (in any tab).
 export async function onUserChange(fn) {
     const supabase = await getSupabase();
     if (!supabase) { fn(null); return; }
     fn(await getUser());
     supabase.auth.onAuthStateChange((event, session) => {
         if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
-            const u = session?.user;
-            fn(u ? { id: u.id, email: u.email || "" } : null);
+            fn(toUser(session?.user));
         }
     });
 }

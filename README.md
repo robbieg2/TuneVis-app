@@ -24,6 +24,10 @@ Needs these Vercel environment variables (pull them with `vercel env pull`):
 
 Accounts stay switched off until step 2 is done; the rest of the site works without them.
 
+> **Existing project?** `supabase/schema.sql` grows over time. New sections are marked
+> `Migration (…)`: run just that block in the SQL Editor (for example the Nov 2026
+> usernames migration) rather than the whole file again.
+
 1. **Create a Supabase project** (free tier) at supabase.com. Use a separate project from
    any other site so users and data stay apart.
 2. **Browser settings:** in Project Settings → API, copy the project URL

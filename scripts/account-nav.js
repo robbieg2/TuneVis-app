@@ -19,9 +19,9 @@ function initAccountNav() {
         chip.classList.toggle("signed-in", Boolean(user));
         if (user) {
             chip.href = "account.html";
-            chip.title = `Your account (${user.email})`;
-            chip.setAttribute("aria-label", "Your account");
-            chip.textContent = (user.email || "?").charAt(0).toUpperCase();
+            chip.title = user.username ? `@${user.username}` : `Your account (${user.email})`;
+            chip.setAttribute("aria-label", user.username ? `Your account, @${user.username}` : "Your account");
+            chip.textContent = (user.username || user.email || "?").charAt(0).toUpperCase();
         } else {
             chip.href = loginUrl();
             chip.title = "Sign in";

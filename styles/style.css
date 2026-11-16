@@ -77,8 +77,10 @@ header h3 {
 	pointer-events: none;
 }
 
+/* Each logo SVG defines #tv-bars (darker green at the foot, lighter at the top);
+   plain green is the fallback. */
 .audio-bars rect {
-	fill: #1db954;
+	fill: url(#tv-bars) #1db954;
 	filter: drop-shadow(0 0 10px rgba(29,185,84,0.35));
 	animation: audioPulse 2.4s ease-in-out infinite alternate;
 	transform-origin: center;
@@ -92,18 +94,22 @@ header h3 {
 	to   { transform: scaleY(1.15); }
 }
 
+/* The wordmark: rounded Fredoka in a pink-to-violet gradient, which complements the
+   green bars behind it instead of fading into them. The drop shadow lifts it off the
+   bars (text-shadow doesn't work with background-clip: text). */
 header.logo .logo-title {
 	margin: 0;
+	font-family: "Fredoka", "Poppins", sans-serif;
 	font-size: clamp(56px, 9vw, 92px);
-	font-weight: 800;
-	letter-spacing: -0.02em;
+	font-weight: 600;
+	letter-spacing: -0.01em;
 	position: relative;
 	z-index: 2;
-	background: linear-gradient(90deg, #ff7aff 0%, #d65cff 40%, #1db954 100%);
+	background: linear-gradient(90deg, #ff9ad8 0%, #d68bff 50%, #a98bff 100%);
 	-webkit-background-clip: text;
 	background-clip: text;
 	-webkit-text-fill-color: transparent;
-	text-shadow: 0 0 30px rgba(29, 185, 84, 0.15), 0 0 60px rgba(214, 92, 255, 0.08);
+	filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.55));
 }
 
 .logo-sub {
@@ -174,14 +180,16 @@ header.logo .logo-title {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 0.02em;
+    font-family: "Fredoka", "Poppins", sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     white-space: nowrap;
-    background: linear-gradient(90deg, #ff7aff 0%, #d65cff 40%, #1db954 100%);
+    background: linear-gradient(90deg, #ff9ad8 0%, #d68bff 50%, #a98bff 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.6));
     line-height: 1;
 }
 
@@ -2334,4 +2342,102 @@ button:disabled {
         padding: 6px 9px;
         font-size: 11px;
     }
+}
+
+/* ── Account page: profile and username ─────────────────────── */
+.account-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 14px 0 6px;
+}
+
+.account-avatar {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Fredoka", "Poppins", sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #ff8fd8 0%, #b57bff 55%, #1db954 100%);
+}
+
+.account-profile-meta {
+    min-width: 0;
+}
+
+.account-username {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.account-username.unset {
+    font-weight: 400;
+    opacity: 0.6;
+}
+
+.account-profile .account-email {
+    margin: 2px 0 0;
+    font-size: 13px;
+    opacity: 0.75;
+}
+
+.username-form {
+    gap: 8px;
+    margin: 18px 0 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.username-input-wrap {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    padding-left: 12px;
+}
+
+.username-input-wrap:focus-within {
+    border-color: rgba(29, 185, 84, 0.6);
+}
+
+.username-at {
+    opacity: 0.55;
+    font-size: 15px;
+}
+
+.username-input-wrap input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 10px 12px 10px 4px;
+    font-size: 15px;
+    font-family: inherit;
+}
+
+.username-input-wrap input:focus {
+    outline: none;
+}
+
+.username-status {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.7;
+    min-height: 1.3em;
+}
+
+.username-status.error   { color: #ff8a8a; opacity: 1; }
+.username-status.success { color: #4fe08a; opacity: 1; }
+
+@media (max-width: 768px) {
+    .username-input-wrap input { font-size: 16px; }
 }

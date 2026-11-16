@@ -4,6 +4,9 @@ import {
     getSupabase, getUser, safeNext, loginUrl, authErrorMessage, NOT_CONFIGURED,
 } from "./supabase.js";
 import { clearRecentCache } from "./auth.js";
+import {
+    usernameProblem, getMyUsername, isUsernameAvailable, saveUsername, syncUsernameToSession,
+} from "./profile.js";
 
 const MIN_PASSWORD = 8;
 const page = document.body.dataset.authPage;
@@ -185,6 +188,8 @@ async function initAccount(supabase) {
     if (params.get("welcome")) showNotice("Your email is confirmed — welcome to TuneVis!", "success");
     else if (params.get("updated")) showNotice("Your password has been changed.", "success");
 
+    initUsername(user);
+
     document.getElementById("sign-out-btn").addEventListener("click", async () => {
         await supabase.auth.signOut();
         clearRecentCache();
@@ -221,6 +226,94 @@ async function initAccount(supabase) {
             clearRecentCache();
             window.location.replace("login.html?deleted=1");
         });
+    });
+}
+
+// ── Username (account page) ───────────────────────────────────────────
+function initUsername(user) {
+    const form = document.getElementById("username-form");
+    const input = document.getElementById("username-input");
+    const label = document.getElementById("username-label");
+    const status = document.getElementById("username-status");
+    const saveBtn = document.getElementById("username-save");
+    const nameEl = document.getElementById("account-username");
+    const avatarEl = document.getElementById("account-avatar");
+    const HINT = "3–20 characters: letters, numbers and underscores.";
+
+    let current = user.username;   // display copy from the session until the table answers
+    let checkId = 0;
+    let checkTimer = null;
+
+    function setStatus(text, tone = "") {
+        status.textContent = text;
+        status.className = `username-status ${tone}`.trim();
+    }
+
+    function renderProfile() {
+        nameEl.textContent = current ? `@${current}` : "No username yet";
+        nameEl.classList.toggle("unset", !current);
+        avatarEl.textContent = (current || user.email || "?").charAt(0).toUpperCase();
+        label.textContent = current ? "Username" : "Choose a username";
+        saveBtn.textContent = current ? "Change username" : "Save username";
+    }
+
+    function refreshButton() {
+        const value = input.value.trim();
+        saveBtn.disabled = !value || value === current;
+    }
+
+    renderProfile();
+    input.value = current || "";
+    refreshButton();
+
+    // The table is the source of truth; the session copy may be stale or missing.
+    getMyUsername().then(name => {
+        current = name;
+        if (!input.value.trim() || input.value.trim() === user.username) input.value = name || "";
+        renderProfile();
+        refreshButton();
+        syncUsernameToSession(name);
+        if (!name && params.get("welcome")) {
+            showNotice("Your email is confirmed — welcome to TuneVis! Pick a username to finish setting up.", "success");
+            input.focus();
+        }
+    }).catch(err => {
+        console.error("[accounts] Could not load profile:", err);
+        form.hidden = true;
+        nameEl.textContent = "";
+    });
+
+    input.addEventListener("input", () => {
+        refreshButton();
+        clearTimeout(checkTimer);
+        const value = input.value.trim();
+        const id = ++checkId;
+        if (!value) { setStatus(HINT); return; }
+        if (value === current) { setStatus("This is your current username."); return; }
+        const problem = usernameProblem(value);
+        if (problem) { setStatus(problem, "error"); return; }
+        setStatus("Checking…");
+        checkTimer = setTimeout(async () => {
+            const free = await isUsernameAvailable(value);
+            if (id !== checkId) return;   // a newer keystroke superseded this check
+            if (free === true) setStatus(`@${value} is available.`, "success");
+            else if (free === false) setStatus(`@${value} is already taken — try another.`, "error");
+            else setStatus(HINT);
+        }, 350);
+    });
+
+    form.addEventListener("submit", e => {
+        e.preventDefault();
+        busy(form, async () => {
+            clearTimeout(checkTimer);
+            checkId++;
+            const value = input.value.trim();
+            const result = await saveUsername(value);
+            if (result.error) { setStatus(result.error, "error"); return; }
+            current = value;
+            renderProfile();
+            setStatus(`Saved — you're @${value}.`, "success");
+        }).then(refreshButton);   // busy() re-enables the button; an unchanged name can't be re-saved
     });
 }
 

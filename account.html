@@ -4,6 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TuneVis — Your account</title>
+  <meta name="theme-color" content="#121212">
+  <meta name="description" content="Explore a song's audio features, find similar tracks and rank your favourite artists, albums and songs.">
+  <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="TuneVis">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/style.css">
 </head>
 <body class="page-flex" data-auth-page="account">
@@ -20,7 +32,13 @@
     <a href="home.html" class="header-logo-link" title="TuneVis home">
       <div class="header-logo-inner">
         <svg class="header-logo-bars" viewBox="0 0 80 34" preserveAspectRatio="xMidYMid meet">
-          <g class="audio-bars">
+          <defs>
+          <linearGradient id="tv-bars" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#139a45"/>
+            <stop offset="1" stop-color="#3ff08a"/>
+          </linearGradient>
+        </defs>
+        <g class="audio-bars">
             <rect x="4"  y="13" width="5" height="8"  rx="2.5"/>
             <rect x="15" y="5"  width="5" height="24" rx="2.5"/>
             <rect x="26" y="8"  width="5" height="18" rx="2.5"/>
@@ -40,7 +58,28 @@
       <h1 class="auth-title">Your account</h1>
       <p class="auth-notice" id="auth-notice" hidden></p>
       <div id="account-body" hidden>
-        <p class="account-email">Signed in as <strong id="account-email"></strong></p>
+        <div class="account-profile">
+          <div class="account-avatar" id="account-avatar" aria-hidden="true"></div>
+          <div class="account-profile-meta">
+            <p class="account-username" id="account-username"></p>
+            <p class="account-email">Signed in as <strong id="account-email"></strong></p>
+          </div>
+        </div>
+
+        <form class="auth-form username-form" id="username-form" novalidate>
+          <label class="auth-field" for="username-input">
+            <span id="username-label">Choose a username</span>
+          </label>
+          <div class="username-input-wrap">
+            <span class="username-at" aria-hidden="true">@</span>
+            <input type="text" id="username-input" name="username" maxlength="20"
+                   autocomplete="username" autocapitalize="none" autocorrect="off"
+                   spellcheck="false" aria-describedby="username-status" required>
+          </div>
+          <p class="username-status" id="username-status" aria-live="polite">3–20 characters: letters, numbers and underscores.</p>
+          <button type="submit" id="username-save">Save username</button>
+        </form>
+
         <div class="account-actions">
           <a href="rankings.html#saved-rankings" class="account-action-link"><button type="button">Your saved rankings</button></a>
           <a href="update-password.html" class="account-action-link"><button type="button" class="secondary-btn">Change password</button></a>

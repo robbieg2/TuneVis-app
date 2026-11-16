@@ -67,12 +67,15 @@ export async function buildRankingImage({ title, subtitle, items }) {
     ctx.fillStyle = "#121212";
     ctx.fillRect(0, 0, width, height);
 
+    // The logo font, if the page has it loaded (canvas text won't wait for it).
+    try { await document.fonts.load('600 26px "Fredoka"'); } catch {}
+
     const gradient = ctx.createLinearGradient(padding, 0, width - padding, 0);
-    gradient.addColorStop(0, "#ff7aff");
-    gradient.addColorStop(0.55, "#d65cff");
-    gradient.addColorStop(1, "#1db954");
+    gradient.addColorStop(0, "#ff9ad8");
+    gradient.addColorStop(0.5, "#d68bff");
+    gradient.addColorStop(1, "#a98bff");
     ctx.fillStyle = gradient;
-    ctx.font = "700 26px Poppins, sans-serif";
+    ctx.font = '600 26px "Fredoka", Poppins, sans-serif';
     ctx.fillText(truncateText(ctx, title || "My Ranking", width - padding * 2), padding, 44);
 
     if (subtitle) {
