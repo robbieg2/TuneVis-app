@@ -1654,3 +1654,320 @@ button {
   opacity: 0.85;
   line-height: 1.5;
 }
+
+/* ── Accounts ───────────────────────────────────────────────── */
+[hidden] {
+    display: none !important;
+}
+
+.auth-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 16px 40px;
+}
+
+.auth-card {
+    background: rgba(24, 24, 24, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 26px 24px;
+    width: min(420px, 100%);
+    box-sizing: border-box;
+    text-align: left;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.auth-title {
+    font-size: 22px;
+    margin: 0 0 6px;
+}
+
+.auth-intro {
+    font-size: 14px;
+    opacity: 0.75;
+    margin: 0 0 14px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.auth-form button[type="submit"] {
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.auth-field span {
+    opacity: 0.8;
+}
+
+.auth-field input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-family: inherit;
+}
+
+.auth-field input:focus {
+    outline: none;
+    border-color: rgba(29, 185, 84, 0.6);
+}
+
+.auth-links {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin: 18px 0 0;
+    font-size: 13px;
+}
+
+.auth-links a,
+.account-danger a {
+    color: #1db954;
+}
+
+.auth-notice {
+    font-size: 14px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 12px 0 0;
+    border: 1px solid transparent;
+}
+
+.auth-notice.error   { background: rgba(255, 80, 80, 0.12);  border-color: rgba(255, 80, 80, 0.35); }
+.auth-notice.success { background: rgba(29, 185, 84, 0.12);  border-color: rgba(29, 185, 84, 0.4); }
+.auth-notice.info    { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); }
+
+.account-email {
+    margin: 10px 0 18px;
+    font-size: 14px;
+    word-break: break-word;
+}
+
+.account-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.account-actions button,
+.account-action-link {
+    width: 100%;
+}
+
+.account-action-link {
+    display: block;
+    text-decoration: none;
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.danger-btn {
+    background: #d63b3b;
+}
+
+.account-danger {
+    margin-top: 26px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 14px;
+    font-size: 14px;
+}
+
+.account-danger summary {
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.account-danger p {
+    opacity: 0.8;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* Header account button (scripts/account-nav.js). The header's own right-hand
+   button moves left to make room. */
+.has-account-chip {
+    position: relative;
+}
+
+.account-chip {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 3;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: background 0.15s;
+}
+
+.account-chip:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.account-chip.signed-in {
+    background: linear-gradient(135deg, #d65cff 0%, #1db954 100%);
+    border-color: transparent;
+}
+
+.account-chip svg {
+    width: 18px;
+    height: 18px;
+    fill: #fff;
+}
+
+.features-header .account-chip {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.features-header.has-account-chip #share-btn,
+.features-header.has-account-chip #audio-help-btn {
+    right: 68px;
+}
+
+.logo-compact.has-account-chip .rankings-nav-link {
+    right: 68px !important;
+}
+
+/* ── Saving rankings ────────────────────────────────────────── */
+.save-rank-btn.saved {
+    background: rgba(29, 185, 84, 0.18);
+    border: 1px solid rgba(29, 185, 84, 0.5);
+}
+
+.saved-rankings {
+    max-width: 760px;
+    margin: 10px auto 24px;
+    padding: 0 20px;
+    text-align: left;
+}
+
+.saved-rankings-title {
+    font-size: 18px;
+    margin: 0 0 10px;
+}
+
+.saved-rankings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.saved-ranking {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.saved-ranking-open {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.saved-ranking-open:hover .saved-ranking-name {
+    text-decoration: underline;
+}
+
+.saved-ranking-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.saved-ranking-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.saved-ranking-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.saved-ranking-sub {
+    font-size: 12px;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.saved-ranking-delete {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 6px 12px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.saved-ranking-delete:hover {
+    border-color: rgba(255, 80, 80, 0.6);
+    background: rgba(255, 80, 80, 0.12);
+}
+
+@media (max-width: 768px) {
+    .account-chip { right: 12px; width: 34px; height: 34px; }
+    .features-header.has-account-chip #share-btn,
+    .features-header.has-account-chip #audio-help-btn { right: 54px; }
+    .logo-compact.has-account-chip .rankings-nav-link { right: 54px !important; }
+}
+
+/* Phones: keep "Copy link" clear of the centred logo now the account button sits beside it. */
+@media (max-width: 480px) {
+    .features-header.has-account-chip #share-btn {
+        padding: 7px 11px;
+        font-size: 12px;
+    }
+}

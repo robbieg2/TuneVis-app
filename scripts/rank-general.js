@@ -1,6 +1,7 @@
 // rank-general.js — personal "favourite artists" / "favourite tracks" rankings
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
+import { initSaveButton } from "./saved-rankings.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
@@ -23,6 +24,7 @@ const trackSearchSuggestions = document.getElementById("track-search-suggestions
 const genreSelect = document.getElementById("genre-select");
 const listNameInput = document.getElementById("list-name-input");
 const exportBtn = document.getElementById("export-btn");
+const saveBtn = document.getElementById("save-rank-btn");
 
 let cachedToken = null;
 let suggestDebounce = null;
@@ -40,9 +42,11 @@ let leftPanelItems = [];    // popular items shown on the left
 let rankSize = 5;
 let rankedIds = [];
 let listName = "";
+let savedId = null;         // the saved ranking (account) this mode is editing, if any
+let saveCtl = { refresh() {}, reset() {} };
 
 const modeState = {
-    artist: null, // { rankSize, rankedIds, pool, leftPanelItems, genre, listName }
+    artist: null, // { rankSize, rankedIds, pool, leftPanelItems, genre, listName, savedId }
     track: null,
 };
 
@@ -58,6 +62,7 @@ function saveActiveModeState() {
         leftPanelItems: leftPanelItems.slice(),
         genre,
         listName,
+        savedId,
     };
 }
 
@@ -83,17 +88,53 @@ function getParams() {
         size: p.get("size") ? Number(p.get("size")) : null,
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
         name: p.get("name") || null,
+        saved: p.get("saved") || null,
     };
 }
 
-function syncUrl() {
+function rankingParams({ includeSaved = true } = {}) {
     const p = new URLSearchParams();
     p.set("mode", mode);
     p.set("genre", genre);
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
     if (listName) p.set("name", listName);
-    history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
+    if (includeSaved && savedId) p.set("saved", savedId);
+    return p;
+}
+
+function syncUrl() {
+    history.replaceState(null, "", `${window.location.pathname}?${rankingParams().toString()}`);
+    saveCtl.refresh();
+}
+
+// ── Saving to an account ───────────────────────────────────────────────
+function getSaveRecord() {
+    const items = rankedIds
+        .map(id => pool.find(p => p.id === id))
+        .filter(Boolean)
+        .map(p => ({ id: p.id, name: p.name, subtitle: p.subtitle || "", image: p.image || "" }));
+    return {
+        kind: mode === "artist" ? "fav_artists" : "fav_tracks",
+        source_id: null,
+        source_name: null,
+        genre,
+        title: (listName.trim() || defaultListName()).slice(0, 120),
+        size: rankSize,
+        item_ids: rankedIds.slice(),
+        items,
+        image: items[0]?.image || null,
+    };
+}
+
+function initSave() {
+    saveCtl = initSaveButton({
+        button: saveBtn,
+        getRecord: getSaveRecord,
+        getSavedId: () => savedId,
+        setSavedId: id => { savedId = id; syncUrl(); },
+        emptyMessage: "Add at least one artist or track to your ranking before saving.",
+    });
 }
 
 function initListName() {
@@ -376,6 +417,7 @@ async function switchMode(newMode) {
         leftPanelItems = saved.leftPanelItems.slice();
         genre = saved.genre;
         listName = saved.listName;
+        savedId = saved.savedId;
         if (genreSelect) genreSelect.value = genre;
         if (listNameInput) listNameInput.value = listName;
         renderAll();
@@ -385,6 +427,7 @@ async function switchMode(newMode) {
         rankedIds = [];
         genre = "all";
         listName = defaultListName();
+        savedId = null;
         if (genreSelect) genreSelect.value = genre;
         if (listNameInput) listNameInput.value = listName;
         leftPanelItems = await loadPopularPool(mode, genre);
@@ -392,6 +435,7 @@ async function switchMode(newMode) {
         renderAll();
     }
 
+    saveCtl.reset();
     syncUrl();
 }
 
@@ -443,7 +487,9 @@ function initShare() {
     if (!shareBtn) return;
     shareBtn.addEventListener("click", async () => {
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            // The shared link carries the ranking, not which account row it was saved as.
+            const link = `${window.location.origin}${window.location.pathname}?${rankingParams({ includeSaved: false }).toString()}`;
+            await navigator.clipboard.writeText(link);
             const original = shareBtn.textContent;
             shareBtn.textContent = "Link copied";
             setTimeout(() => (shareBtn.textContent = original), 1600);
@@ -721,6 +767,7 @@ async function init() {
         genre = params.genre || "all";
         rankSize = params.size && SIZE_OPTIONS.some(o => o.value === params.size) ? params.size : 5;
         listName = params.name || defaultListName();
+        savedId = params.saved;
         if (listNameInput) listNameInput.value = listName;
 
         document.querySelectorAll("#rank-mode-toggle .tab-btn").forEach(btn => {
@@ -749,6 +796,7 @@ async function init() {
         initTrackSearch();
         initListName();
         initExport();
+        initSave();
 
         loadingEl.style.display = "none";
         pageEl.style.display = "block";

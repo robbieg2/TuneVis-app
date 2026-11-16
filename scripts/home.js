@@ -1,5 +1,5 @@
 // home.js
-import { getSpotifyToken, saveToRecent, getRecent, esc } from "./auth.js";
+import { getSpotifyToken, saveToRecent, getRecent, syncRecent, esc } from "./auth.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const TRENDING_CACHE_KEY = "tunevis_trending_cache";
@@ -202,8 +202,23 @@ async function loadTrending(genre = "all") {
 
 // ── Recently Viewed ──────────────────────────────────────────────────────────
 
+let recentRequestId = 0;
+
+// Shows this browser's list straight away, then, if signed in to a TuneVis account,
+// the list merged with the account's (re-rendered only if it actually changed, since
+// every card holds a Spotify embed).
 function loadRecent() {
-  const tracks   = getRecent();
+  const local = getRecent();
+  const requestId = ++recentRequestId;
+  renderRecent(local);
+  syncRecent().then(merged => {
+    if (!merged || requestId !== recentRequestId) return;
+    const ids = list => list.map(t => t.id).join(",");
+    if (ids(merged) !== ids(local)) renderRecent(merged);
+  });
+}
+
+function renderRecent(tracks) {
   const emptyEl  = document.getElementById("recent-empty");
   const wrapper  = document.getElementById("recent-carousel-wrapper");
   const carousel = document.getElementById("recent-results");

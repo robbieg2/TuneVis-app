@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TuneVis — Your account</title>
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+<body class="page-flex" data-auth-page="account">
+  <div class="bg-layer">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+    <div class="bg-circle c4"></div>
+  </div>
+
+  <header class="features-header">
+    <button id="back-btn" aria-label="Back">&#8592;</button>
+
+    <a href="home.html" class="header-logo-link" title="TuneVis home">
+      <div class="header-logo-inner">
+        <svg class="header-logo-bars" viewBox="0 0 80 34" preserveAspectRatio="xMidYMid meet">
+          <g class="audio-bars">
+            <rect x="4"  y="13" width="5" height="8"  rx="2.5"/>
+            <rect x="15" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="26" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="37" y="2"  width="5" height="30" rx="2.5"/>
+            <rect x="48" y="8"  width="5" height="18" rx="2.5"/>
+            <rect x="59" y="5"  width="5" height="24" rx="2.5"/>
+            <rect x="70" y="13" width="5" height="8"  rx="2.5"/>
+          </g>
+        </svg>
+        <span class="header-logo-text">TuneVis</span>
+      </div>
+    </a>
+  </header>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <h1 class="auth-title">Your account</h1>
+      <p class="auth-notice" id="auth-notice" hidden></p>
+      <div id="account-body" hidden>
+        <p class="account-email">Signed in as <strong id="account-email"></strong></p>
+        <div class="account-actions">
+          <a href="rankings.html#saved-rankings" class="account-action-link"><button type="button">Your saved rankings</button></a>
+          <a href="update-password.html" class="account-action-link"><button type="button" class="secondary-btn">Change password</button></a>
+          <button type="button" id="sign-out-btn" class="secondary-btn">Sign out</button>
+        </div>
+
+        <details class="account-danger">
+          <summary>Delete account</summary>
+          <p>This permanently deletes your account, your saved rankings and your recently viewed history. It can't be undone.</p>
+          <form class="auth-form" id="delete-form" novalidate>
+            <label class="auth-field">
+              <span>Type your email address to confirm</span>
+              <input type="email" name="confirm_email" autocomplete="off" required>
+            </label>
+            <button type="submit" class="danger-btn">Delete my account</button>
+          </form>
+          <p class="auth-notice" id="delete-notice" hidden></p>
+        </details>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>TuneVis | Built using Spotify API, ReccoBeats &amp; Last.fm API</p>
+  </footer>
+
+  <script type="module" src="scripts/auth-pages.js"></script>
+</body>
+</html>

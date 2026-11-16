@@ -1,11 +1,13 @@
 // rank.js — artist / album ranking workspace
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
+import { initSaveButton } from "./saved-rankings.js";
 
 const backBtn = document.getElementById("back-btn");
 const shareBtn = document.getElementById("share-btn");
 const listNameInput = document.getElementById("list-name-input");
 const exportBtn = document.getElementById("export-btn");
+const saveBtn = document.getElementById("save-rank-btn");
 const loadingEl = document.getElementById("rank-page-loading");
 const pageEl = document.getElementById("rank-page");
 const headEl = document.getElementById("rank-head");
@@ -32,6 +34,8 @@ let sizeOptions = [];        // [{ label, value }]
 let rankSize = 5;
 let rankedIds = [];          // ordered array of track ids, length <= rankSize
 let listName = "";           // user-editable title for this ranking, used in exports
+let savedId = null;          // the saved ranking (account) this page is editing, if any
+let saveCtl = { refresh() {}, reset() {} };
 
 function addToPool(track) {
     if (!allTracks.some(t => t.id === track.id)) {
@@ -47,17 +51,69 @@ function getParams() {
         size: p.get("size") ? Number(p.get("size")) : null,
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
         name: p.get("name") || null,
+        saved: p.get("saved") || null,
     };
 }
 
-function syncUrl() {
+function rankingParams({ includeSaved = true } = {}) {
     const p = new URLSearchParams();
     p.set("type", meta.type);
     p.set("id", meta.id);
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
     if (listName) p.set("name", listName);
-    history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
+    if (includeSaved && savedId) p.set("saved", savedId);
+    return p;
+}
+
+function syncUrl() {
+    history.replaceState(null, "", `${window.location.pathname}?${rankingParams().toString()}`);
+    saveCtl.refresh();
+}
+
+// ── Saving to an account ───────────────────────────────────────────────
+function getSaveRecord() {
+    return {
+        kind: meta.type,
+        source_id: meta.id,
+        source_name: meta.name,
+        genre: null,
+        title: (listName.trim() || defaultListName()).slice(0, 120),
+        size: rankSize,
+        item_ids: rankedIds.slice(),
+        items: rankedIds
+            .map(id => allTracks.find(t => t.id === id))
+            .filter(Boolean)
+            .map(t => ({ id: t.id, name: t.name, subtitle: (t.artists || []).join(", "), image: t.image || "" })),
+        image: meta.image || null,
+    };
+}
+
+function initSave() {
+    saveCtl = initSaveButton({
+        button: saveBtn,
+        getRecord: getSaveRecord,
+        getSavedId: () => savedId,
+        setSavedId: id => { savedId = id; syncUrl(); },
+        emptyMessage: "Add at least one track to your ranking before saving.",
+    });
+}
+
+// Tracks added from the catalog search aren't in the top tracks / tracklist, so a
+// ranking reopened from a link or a saved ranking looks those up by id.
+async function addMissingTracks(token, ids) {
+    const missing = ids.filter(id => !allTracks.some(t => t.id === id));
+    for (let i = 0; i < missing.length; i += 50) {
+        try {
+            const data = await spotifyFetch(token, `https://api.spotify.com/v1/tracks?ids=${missing.slice(i, i + 50).join(",")}`);
+            (data?.tracks || []).filter(Boolean).forEach(t => addToPool({
+                id: t.id,
+                name: t.name,
+                artists: (t.artists || []).map(a => a.name),
+                image: t.album?.images?.[0]?.url || meta.image,
+            }));
+        } catch {}
+    }
 }
 
 function defaultListName() {
@@ -324,7 +380,9 @@ function initShare() {
     if (!shareBtn) return;
     shareBtn.addEventListener("click", async () => {
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            // The shared link carries the ranking, not which account row it was saved as.
+            const link = `${window.location.origin}${window.location.pathname}?${rankingParams({ includeSaved: false }).toString()}`;
+            await navigator.clipboard.writeText(link);
             const original = shareBtn.textContent;
             shareBtn.textContent = "Link copied";
             setTimeout(() => (shareBtn.textContent = original), 1600);
@@ -592,7 +650,7 @@ function renderSearchResults(results) {
 
 // ── Init ───────────────────────────────────────────────────────────────
 async function init() {
-    const { type, id, size, order, name } = getParams();
+    const { type, id, size, order, name, saved } = getParams();
 
     if (!type || !id || (type !== "artist" && type !== "album")) {
         loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">No artist or album selected</div><div class="loading-sub">Go back and search for one to rank.</div></div>`;
@@ -613,8 +671,10 @@ async function init() {
         leftPanelTracks = allTracks.slice();
 
         rankSize = size && sizeOptions.some(o => o.value === size) ? size : sizeOptions[0].value;
+        await addMissingTracks(token, order.slice(0, rankSize));
         rankedIds = order.filter(oid => allTracks.some(t => t.id === oid)).slice(0, rankSize);
         listName = name || defaultListName();
+        savedId = saved;
 
         renderHead();
         renderAll();
@@ -624,6 +684,7 @@ async function init() {
         initClearButton();
         initListName();
         initExport();
+        initSave();
 
         loadingEl.style.display = "none";
         pageEl.style.display = "block";
