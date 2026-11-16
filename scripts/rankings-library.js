@@ -15,7 +15,18 @@ const listEl = document.getElementById("saved-rankings-list");
 const barEl = document.getElementById("folder-bar");
 const toolsEl = document.getElementById("folder-tools");
 const sortEl = document.getElementById("sort-toggle");
+const typeTabsEl = document.getElementById("type-tabs");
 const SORT_KEY = "tunevis_saved_sort";
+
+// Tabs by kind of ranking, so an artist's albums & EPs rankings sit apart from
+// single-album rankings. They combine with folders (e.g. albums in "Favourites").
+const TYPE_TABS = [
+    { id: "all", label: "All", kinds: null },
+    { id: "album", label: "Albums", kinds: ["album"] },
+    { id: "artist_albums", label: "Artist albums & EPs", kinds: ["artist_albums"] },
+    { id: "artist", label: "Artist top tracks", kinds: ["artist"] },
+    { id: "favourites", label: "Favourite artists & tracks", kinds: ["fav_artists", "fav_tracks"] },
+];
 
 const FOLDER_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.76a2 2 0 0 1 1.42.59L12.1 6H18.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>`;
 const TRASH_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/></svg>`;
@@ -26,6 +37,7 @@ let folders = [];
 let items = [];                 // [{ folder_id, ranking_id }]
 let foldersAvailable = false;   // false until the folders migration has been run
 let active = "all";             // "all" or a folder id
+let typeFilter = "all";         // a TYPE_TABS id
 let sortBy = readSortPreference(); // "recent" or "rating"
 let loadId = 0;
 
@@ -58,20 +70,64 @@ const foldersOf = rankingId => folders.filter(f => items.some(i => i.folder_id =
 const countIn = folderId => items.filter(i => i.folder_id === folderId && rankings.some(r => r.id === i.ranking_id)).length;
 const activeFolder = () => folders.find(f => f.id === active) || null;
 
-// The open folder lives in the URL (?folder=<id>) so it survives a reload or back.
+// The open folder and kind live in the URL (?folder=<id>&type=<kind>) so they
+// survive a reload or going back.
 function syncFolderUrl() {
     const url = new URL(window.location.href);
     if (active === "all") url.searchParams.delete("folder");
     else url.searchParams.set("folder", active);
+    if (typeFilter === "all") url.searchParams.delete("type");
+    else url.searchParams.set("type", typeFilter);
     history.replaceState(null, "", url);
 }
+
+// Rankings in the open folder (all of them on "All").
+function inActiveFolder() {
+    const folder = activeFolder();
+    return folder
+        ? rankings.filter(r => items.some(i => i.folder_id === folder.id && i.ranking_id === r.id))
+        : rankings;
+}
+
+const typeTab = id => TYPE_TABS.find(t => t.id === id) || TYPE_TABS[0];
+const ofType = (list, id) => {
+    const kinds = typeTab(id).kinds;
+    return kinds ? list.filter(r => kinds.includes(r.kind)) : list;
+};
 
 // ── Rendering ──────────────────────────────────────────────────────────
 function render() {
     renderFolderBar();
+    renderTypeTabs();
     renderSortToggle();
     renderList();
 }
+
+// One tab per kind that has rankings in the open folder, with counts. Hidden when
+// everything is one kind, since there'd be nothing to choose between.
+function renderTypeTabs() {
+    const scope = inActiveFolder();
+    const present = TYPE_TABS.filter(t => t.kinds && ofType(scope, t.id).length);
+    if (typeFilter !== "all" && !present.some(t => t.id === typeFilter)) {
+        typeFilter = "all";   // that kind has nothing here any more
+        syncFolderUrl();
+    }
+    typeTabsEl.hidden = present.length < 2 && typeFilter === "all";
+    if (typeTabsEl.hidden) { typeTabsEl.innerHTML = ""; return; }
+    typeTabsEl.innerHTML = [TYPE_TABS[0], ...present].map(t => `
+        <button type="button" class="type-tab${typeFilter === t.id ? " active" : ""}" data-type="${t.id}" aria-pressed="${typeFilter === t.id}">
+            ${esc(t.label)}<span class="type-tab-count">${ofType(scope, t.id).length}</span>
+        </button>`).join("");
+}
+
+typeTabsEl.addEventListener("click", e => {
+    const btn = e.target.closest("button[data-type]");
+    if (!btn || btn.dataset.type === typeFilter) return;
+    typeFilter = btn.dataset.type;
+    syncFolderUrl();
+    renderTypeTabs();
+    renderList();
+});
 
 function renderSortToggle() {
     sortEl.querySelectorAll("button").forEach(btn => {
@@ -155,11 +211,13 @@ function rankingRow(r) {
 
 function renderList() {
     const folder = activeFolder();
-    const shown = sorted(folder
-        ? rankings.filter(r => items.some(i => i.folder_id === folder.id && i.ranking_id === r.id))
-        : rankings);
+    const shown = sorted(ofType(inActiveFolder(), typeFilter));
 
     listEl.innerHTML = "";
+    if (!shown.length && typeFilter !== "all") {
+        listEl.innerHTML = `<p class="tab-empty">No ${esc(typeTab(typeFilter).label.toLowerCase())} rankings${folder ? ` in "${esc(folder.name)}"` : ""} yet.</p>`;
+        return;
+    }
     if (!shown.length) {
         listEl.innerHTML = folder
             ? `<p class="tab-empty">Nothing in "${esc(folder.name)}" yet. Use the folder button on any ranking to add it here.</p>`
@@ -364,8 +422,10 @@ async function load(user) {
         if (id !== loadId) return;
         rankings = rows || [];
         ({ folders, items, available: foldersAvailable } = library);
-        const wanted = new URLSearchParams(window.location.search).get("folder");
+        const params = new URLSearchParams(window.location.search);
+        const wanted = params.get("folder");
         active = wanted && folders.some(f => f.id === wanted) ? wanted : "all";
+        typeFilter = typeTab(params.get("type")).id;
         render();
     } catch (err) {
         if (id !== loadId) return;
