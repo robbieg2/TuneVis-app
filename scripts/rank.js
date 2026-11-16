@@ -9,6 +9,7 @@ import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from ".
 import { initSaveButton, KIND_LABELS } from "./saved-rankings.js";
 import { createStarRating, parseRating, starsText, starsHtml, formatRating } from "./star-rating.js";
 import { setViewMode, renderRankView } from "./rank-view.js";
+import { openInSpotifyHtml } from "./spotify-open.js";
 
 const backBtn = document.getElementById("back-btn");
 const listNameInput = document.getElementById("list-name-input");
@@ -347,10 +348,10 @@ async function loadArtistAlbums(token) {
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────
-// The browser tab title names what's being ranked, e.g. "Abbey Road Album Ranking".
+// The browser tab title names what's being ranked, e.g. "Abbey Road · Album Ranking".
 function updateTitle() {
-    const what = meta.type === "album" ? "Album" : isAlbumsList() ? "Albums" : "Tracks";
-    document.title = `${meta.name} ${what} Ranking — TuneVis`;
+    const what = meta.type === "album" ? "Album" : isAlbumsList() ? "Albums & EPs" : "Top Tracks";
+    document.title = `${meta.name} · ${what} Ranking — TuneVis`;
 }
 
 function renderHead() {
@@ -361,6 +362,7 @@ function renderHead() {
             <div class="rank-head-name-row">
                 <h1 class="rank-head-name">${esc(meta.name)}</h1>
                 <button id="rank-play-btn" class="rank-play-btn" type="button" aria-label="Play">&#9654; Play</button>
+                ${openInSpotifyHtml(meta.type, meta.id)}
             </div>
             <p class="rank-head-sub">${esc(meta.subtitle)}</p>
         </div>

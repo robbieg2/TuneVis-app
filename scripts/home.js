@@ -1,5 +1,6 @@
 // home.js
 import { getSpotifyToken, saveToRecent, getRecent, syncRecent, esc } from "./auth.js";
+import { openInSpotifyHtml } from "./spotify-open.js";
 import { getUser } from "./supabase.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
@@ -47,7 +48,10 @@ function buildTrackCard(track) {
       allowtransparency="true" allow="encrypted-media">
     </iframe>
     <br/><br/>
-    <button class="features-btn">Show audio features</button>
+    <div class="track-card-actions">
+      <button class="features-btn">Show audio features</button>
+      ${openInSpotifyHtml("track", id)}
+    </div>
   `;
 
   div.querySelector(".features-btn").addEventListener("click", (e) => {

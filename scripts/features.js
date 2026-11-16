@@ -17,6 +17,7 @@ import {
 } from "./features-charts.js";
 
 import { getSpotifyToken, saveToRecent, esc } from "./auth.js";
+import { openInSpotifyHtml } from "./spotify-open.js";
 
 const trackInfo = document.getElementById("track-info");
 const backBtn = document.getElementById("back-btn");
@@ -53,6 +54,7 @@ function renderTrackHeader(track) {
                     allowtransparency="true"
                     allow="encrypted-media">
                 </iframe>
+                <div class="track-card-actions seed-actions">${openInSpotifyHtml("track", track.id)}</div>
             </div>
         </div>
     `;
@@ -287,6 +289,7 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 				allow="encrypted-media">
 			</iframe>
 			${trackMeta ? `<button class="features-btn analyse-rec-btn" style="margin-top:8px;width:100%;">Analyse this track</button>` : ""}
+			${openInSpotifyHtml("track", id)}
 		`;
 
 		if (trackMeta) {

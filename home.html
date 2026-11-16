@@ -42,17 +42,6 @@
   </div>
 
   <header class="logo logo-compact">
-    <a href="rankings.html" class="rankings-nav-link" style="position:absolute; right:20px; top:20px; z-index:3;">
-      <button type="button" class="rankings-nav-btn">
-        <svg class="rankings-nav-icon" viewBox="0 0 20 16" width="14" height="14" aria-hidden="true">
-          <rect x="1"  y="9" width="4" height="7" rx="1"/>
-          <rect x="8"  y="4" width="4" height="12" rx="1"/>
-          <rect x="15" y="0" width="4" height="16" rx="1"/>
-        </svg>
-        Rankings
-      </button>
-    </a>
-
     <svg class="logo-bars" viewBox="-10 -18 660 256" preserveAspectRatio="xMidYMid meet">
       <defs>
           <linearGradient id="tv-bars" x1="0" y1="1" x2="0" y2="0">
@@ -77,13 +66,24 @@
     </svg>
 
     <h1 class="logo-title">TuneVis</h1>
+
+    <nav class="section-nav" aria-label="Sections">
+      <a href="home.html" class="section-nav-link" aria-current="page">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.8 12.8l4.4 4.4"/></svg>
+        Discover
+      </a>
+      <a href="rankings.html" class="section-nav-link">
+        <svg viewBox="0 0 20 16" aria-hidden="true" class="filled"><rect x="1" y="9" width="4" height="7" rx="1"/><rect x="8" y="4" width="4" height="12" rx="1"/><rect x="15" y="0" width="4" height="16" rx="1"/></svg>
+        Rankings
+      </a>
+    </nav>
   </header>
 
   <!-- Search -->
   <div id="search-section">
     <input type="text" id="search-input" placeholder="Search for a song..." />
     <button id="search-btn">Search</button>
-    <p class="playback-hint">If playback doesn't work, log into Spotify in another tab</p>
+    <p class="playback-hint">The player plays previews. For full songs, sign in to Spotify in this browser or tap Open in Spotify.</p>
   </div>
 
   <div class="carousel-wrapper" id="search-carousel-wrapper" style="display:none;">
