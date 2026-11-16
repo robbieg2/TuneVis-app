@@ -1,14 +1,14 @@
 // rank-general.js — personal "favourite artists" / "favourite tracks" rankings
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
-import { initSaveButton } from "./saved-rankings.js";
+import { initSaveButton, KIND_LABELS } from "./saved-rankings.js";
+import { setViewMode, renderRankView } from "./rank-view.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
 const POOL_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 const backBtn = document.getElementById("back-btn");
-const shareBtn = document.getElementById("share-btn");
 const loadingEl = document.getElementById("rank-page-loading");
 const pageEl = document.getElementById("rank-page");
 const modeToggleEl = document.getElementById("rank-mode-toggle");
@@ -25,6 +25,9 @@ const genreSelect = document.getElementById("genre-select");
 const listNameInput = document.getElementById("list-name-input");
 const exportBtn = document.getElementById("export-btn");
 const saveBtn = document.getElementById("save-rank-btn");
+const doneBtn = document.getElementById("rank-done-btn");
+const editBtn = document.getElementById("rank-edit-btn");
+const viewExportBtn = document.getElementById("rank-view-export-btn");
 
 let cachedToken = null;
 let suggestDebounce = null;
@@ -43,7 +46,8 @@ let rankSize = 5;
 let rankedIds = [];
 let listName = "";
 let savedId = null;         // the saved ranking (account) this mode is editing, if any
-let saveCtl = { refresh() {}, reset() {} };
+let saveCtl = { refresh() {}, reset() {}, isDirty: () => false, save: async () => true };
+let viewing = false;        // showing a saved ranking as a finished list
 
 const modeState = {
     artist: null, // { rankSize, rankedIds, pool, leftPanelItems, genre, listName, savedId }
@@ -89,17 +93,20 @@ function getParams() {
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
         name: p.get("name") || null,
         saved: p.get("saved") || null,
+        edit: p.get("edit") === "1",
     };
 }
 
-function rankingParams({ includeSaved = true } = {}) {
+function rankingParams() {
     const p = new URLSearchParams();
     p.set("mode", mode);
     p.set("genre", genre);
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
     if (listName) p.set("name", listName);
-    if (includeSaved && savedId) p.set("saved", savedId);
+    if (savedId) p.set("saved", savedId);
+    // A saved ranking opens as the finished list unless the URL says it's being edited.
+    if (savedId && !viewing) p.set("edit", "1");
     return p;
 }
 
@@ -132,10 +139,63 @@ function initSave() {
         button: saveBtn,
         getRecord: getSaveRecord,
         getSavedId: () => savedId,
-        setSavedId: id => { savedId = id; syncUrl(); },
-        emptyMessage: "Add at least one artist or track to your ranking before saving.",
+        setSavedId: id => { savedId = id; refreshDoneButton(); syncUrl(); },
+        emptyMessage: () => `Add at least one ${mode === "artist" ? "artist" : "track"} to your ranking before saving.`,
     });
 }
+
+// ── Finished-list view and edit mode ──────────────────────────────────
+// "Done" finishes editing a saved ranking: saves any changes, then shows the list.
+function refreshDoneButton() {
+    if (doneBtn) doneBtn.hidden = !savedId || saveBtn?.hidden;
+}
+
+doneBtn?.addEventListener("click", async () => {
+    if (saveCtl.isDirty()) {
+        doneBtn.disabled = true;
+        const ok = await saveCtl.save();
+        doneBtn.disabled = false;
+        if (!ok) return;
+    }
+    enterView();
+});
+
+function renderView() {
+    const items = rankedIds
+        .map(id => pool.find(p => p.id === id))
+        .filter(Boolean)
+        .map(p => ({ name: p.name, subtitle: p.subtitle || "", image: p.image, round: mode === "artist" }));
+    const kind = mode === "artist" ? "fav_artists" : "fav_tracks";
+    const genreNote = genre && genre !== "all" && genreSelect
+        ? ` · ${genreSelect.querySelector(`option[value="${genre}"]`)?.textContent || genre}`
+        : "";
+    renderRankView({
+        title: listName || defaultListName(),
+        meta: `${KIND_LABELS[kind]} · ${items.length >= rankSize ? `Top ${rankSize}` : `${items.length} of top ${rankSize} ranked`}${genreNote}`,
+        items,
+        emptyText: `No ${mode === "artist" ? "artists" : "tracks"} ranked yet.`,
+    });
+}
+
+function enterView() {
+    viewing = true;
+    hideSuggestions();
+    renderView();
+    setViewMode(true);
+    syncUrl();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function enterEdit() {
+    viewing = false;
+    setViewMode(false);
+    refreshDoneButton();
+    renderAll();
+    syncUrl();
+}
+
+editBtn?.addEventListener("click", enterEdit);
+viewExportBtn?.addEventListener("click", () => openExportModal());
 
 function initListName() {
     if (!listNameInput) return;
@@ -440,6 +500,7 @@ async function switchMode(newMode) {
     }
 
     saveCtl.reset();
+    refreshDoneButton();
     syncUrl();
 }
 
@@ -483,23 +544,6 @@ function initMobileTabs() {
             tracksPanel.classList.toggle("mobile-hidden", which !== "tracks");
             rankingPanel.classList.toggle("mobile-hidden", which !== "ranking");
         });
-    });
-}
-
-// ── Share ──────────────────────────────────────────────────────────────
-function initShare() {
-    if (!shareBtn) return;
-    shareBtn.addEventListener("click", async () => {
-        try {
-            // The shared link carries the ranking, not which account row it was saved as.
-            const link = `${window.location.origin}${window.location.pathname}?${rankingParams({ includeSaved: false }).toString()}`;
-            await navigator.clipboard.writeText(link);
-            const original = shareBtn.textContent;
-            shareBtn.textContent = "Link copied";
-            setTimeout(() => (shareBtn.textContent = original), 1600);
-        } catch {
-            alert("Couldn't copy the link automatically — you can copy it from the address bar.");
-        }
     });
 }
 
@@ -772,6 +816,8 @@ async function init() {
         rankSize = params.size && SIZE_OPTIONS.some(o => o.value === params.size) ? params.size : 5;
         listName = params.name || defaultListName();
         savedId = params.saved;
+        // A saved ranking opens as the finished list, unless the URL says it's being edited.
+        viewing = Boolean(savedId) && !params.edit;
         if (listNameInput) listNameInput.value = listName;
 
         document.querySelectorAll("#rank-mode-toggle .tab-btn").forEach(btn => {
@@ -795,16 +841,17 @@ async function init() {
         initModeToggle();
         initGenreSelect();
         initMobileTabs();
-        initShare();
         initClearButton();
         initTrackSearch();
         initListName();
         initExport();
         initSave();
 
+        if (viewing) enterView();
+        else enterEdit();
+
         loadingEl.style.display = "none";
         pageEl.style.display = "block";
-        syncUrl();
     } catch (err) {
         console.error(err);
         loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">Something went wrong</div><div class="loading-sub">Please try again later.</div></div>`;

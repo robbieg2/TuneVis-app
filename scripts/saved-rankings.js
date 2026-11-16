@@ -30,19 +30,22 @@ function comparable(r) {
 }
 
 export const KIND_LABELS = {
-    artist: "Artist ranking",
+    artist: "Artist top tracks",
+    artist_albums: "Artist albums",
     album: "Album ranking",
     fav_artists: "Favourite artists",
     fav_tracks: "Favourite tracks",
 };
 
+// A saved ranking's page. Without &edit=1 it opens as the finished list.
 export function rankingUrl(r) {
     const p = new URLSearchParams();
     let page;
-    if (r.kind === "artist" || r.kind === "album") {
+    if (r.kind === "artist" || r.kind === "album" || r.kind === "artist_albums") {
         page = "rank.html";
-        p.set("type", r.kind);
+        p.set("type", r.kind === "album" ? "album" : "artist");
         p.set("id", r.source_id);
+        if (r.kind === "artist_albums") p.set("list", "albums");
     } else {
         page = "rank-general.html";
         p.set("mode", r.kind === "fav_artists" ? "artist" : "track");
@@ -78,10 +81,11 @@ export async function deleteRanking(id) {
 //   getSavedId()    → the row this page is editing, or null
 //   setSavedId(id)  → called after the first save (the page puts it in its URL)
 //   emptyMessage    → shown if Save is pressed with nothing ranked
-// Returns { refresh(), reset() }: call refresh() after every change to the ranking and
-// reset() when the page switches to a different ranking.
+// Returns { refresh(), reset(), isDirty(), save() }: call refresh() after every change
+// to the ranking and reset() when the page switches to a different ranking. save()
+// does what pressing the button does and resolves true once saved.
 export function initSaveButton({ button, getRecord, getSavedId, setSavedId, emptyMessage }) {
-    const noop = { refresh() {}, reset() {} };
+    const noop = { refresh() {}, reset() {}, isDirty: () => false, save: async () => true };
     if (!button || !accountsConfigured) return noop;
     button.hidden = false;
 
@@ -113,16 +117,17 @@ export function initSaveButton({ button, getRecord, getSavedId, setSavedId, empt
         refresh();
     }
 
-    button.addEventListener("click", async () => {
+    async function save() {
         const user = await getUser();
-        if (!user) { window.location.href = loginUrl(); return; }
+        if (!user) { window.location.href = loginUrl(); return false; }
 
         const record = getRecord();
         // A ranking needs something in it: at least one ranked item, or (albums) a star
         // rating on its own, so an album can be rated before its tracks are ordered.
         if (!record.item_ids.length && !record.rating) {
-            alert(emptyMessage || "Add something to your ranking before saving.");
-            return;
+            const message = typeof emptyMessage === "function" ? emptyMessage() : emptyMessage;
+            alert(message || "Add something to your ranking before saving.");
+            return false;
         }
 
         const supabase = await getSupabase();
@@ -156,17 +161,26 @@ export function initSaveButton({ button, getRecord, getSavedId, setSavedId, empt
             lastSaved = comparable(record);
             saving = false;
             refresh();
+            return true;
         } catch (err) {
             console.error("[accounts] Could not save ranking:", err);
             saving = false;
             flash("Couldn't save");
+            return false;
         } finally {
             button.disabled = false;
         }
-    });
+    }
+
+    button.addEventListener("click", save);
 
     loadSavedState();
-    return { refresh, reset: loadSavedState };
+    return {
+        refresh,
+        reset: loadSavedState,
+        isDirty: () => lastSaved === null || lastSaved !== comparable(getRecord()),
+        save,
+    };
 }
 
 // ── Folders ────────────────────────────────────────────────────────────

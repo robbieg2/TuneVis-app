@@ -132,16 +132,14 @@ header.logo .logo-title {
 }
 
 .features-header #back-btn,
-.features-header #audio-help-btn,
-.features-header #share-btn {
+.features-header #audio-help-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
 }
 
 .features-header #back-btn      { left: 20px; }
-.features-header #audio-help-btn,
-.features-header #share-btn     { right: 20px; }
+.features-header #audio-help-btn { right: 20px; }
 
 .features-header #back-btn,
 .features-header #audio-help-btn {
@@ -1823,7 +1821,6 @@ button:disabled {
     transform: translateY(-50%);
 }
 
-.features-header.has-account-chip #share-btn,
 .features-header.has-account-chip #audio-help-btn {
     right: 68px;
 }
@@ -2008,8 +2005,7 @@ button:disabled {
     }
 
     .features-header #back-btn { left: 12px; }
-    .features-header #audio-help-btn,
-    .features-header #share-btn { right: 12px; }
+    .features-header #audio-help-btn { right: 12px; }
 
     .features-header #back-btn,
     .features-header #audio-help-btn {
@@ -2026,7 +2022,6 @@ button:disabled {
         height: 34px;
     }
 
-    .features-header.has-account-chip #share-btn,
     .features-header.has-account-chip #audio-help-btn { right: 54px; }
 
     /* ── Landing page ── */
@@ -2329,24 +2324,12 @@ button:disabled {
         width: 104px;
         height: 104px;
     }
-
-    /* Keep "Copy link" clear of the centred logo beside the account button. */
-    .features-header.has-account-chip #share-btn {
-        padding: 7px 11px;
-        font-size: 12px;
-    }
 }
 
-/* Smallest phones (e.g. iPhone SE, 320px): shrink the header logo and "Copy link"
-   so they don't touch. */
+/* Smallest phones (e.g. iPhone SE, 320px): a slightly smaller header logo. */
 @media (max-width: 360px) {
     .header-logo-bars { width: 76px; }
     .header-logo-text { font-size: 13px; }
-
-    .features-header.has-account-chip #share-btn {
-        padding: 6px 9px;
-        font-size: 11px;
-    }
 }
 
 /* ── Account page: profile and username ─────────────────────── */
@@ -2804,4 +2787,130 @@ button:disabled {
     background: #1db954;
     color: #fff;
     font-weight: 600;
+}
+
+
+/* ── Saved ranking: finished-list view ───────────────────────── */
+.rank-view {
+    max-width: 640px;
+    margin: 18px auto 32px;
+    padding: 0 20px;
+    text-align: left;
+}
+
+.rank-view-title {
+    font-family: "Fredoka", "Poppins", sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.rank-view-meta {
+    margin: 4px 0 16px;
+    font-size: 13px;
+    opacity: 0.65;
+}
+
+.rank-view-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.rank-view-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+.rank-view-num {
+    width: 28px;
+    flex-shrink: 0;
+    text-align: center;
+    font-family: "Fredoka", "Poppins", sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    opacity: 0.55;
+}
+
+/* Gold, silver, bronze for the top three. */
+.rank-view-item.podium .rank-view-num { opacity: 1; }
+.podium-1 .rank-view-num { color: #ffc94d; }
+.podium-2 .rank-view-num { color: #d4dae3; }
+.podium-3 .rank-view-num { color: #e0a074; }
+.rank-view-item.podium-1 { border-color: rgba(255, 201, 77, 0.35); }
+
+.rank-view-img {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.rank-view-img.round { border-radius: 50%; }
+
+.rank-view-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rank-view-name {
+    font-weight: 600;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+}
+
+.rank-view-sub {
+    font-size: 12px;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rank-view-empty {
+    padding: 22px;
+    text-align: center;
+    opacity: 0.65;
+    font-size: 14px;
+    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+}
+
+.rank-view-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.rank-view-actions button { font-weight: 600; }
+
+.rank-head-rating-static {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffc94d;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+#rank-list-toggle { margin-top: 18px; }
+
+@media (max-width: 768px) {
+    .rank-view { padding: 0 16px; margin-top: 14px; }
+    .rank-view-title { font-size: 22px; }
+    .rank-view-item { padding: 9px 12px; gap: 12px; }
+    .rank-view-img { width: 46px; height: 46px; }
+    .rank-view-actions button { flex: 1; }
 }

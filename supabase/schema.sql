@@ -214,3 +214,33 @@ create policy "Users manage their own folder items"
 
 grant select, insert, update, delete on public.ranking_folders      to authenticated;
 grant select, insert, delete         on public.ranking_folder_items to authenticated;
+
+
+-- ===========================================================================
+-- Migration (Nov 2026): artist album rankings
+-- On an existing database, run just this block (from here to the end of the file)
+-- in the SQL Editor.
+-- ===========================================================================
+
+-- A new kind of saved ranking: an artist's albums (rank.html's "Albums" toggle).
+-- The original kind and source checks were created without names, so find them by
+-- what they check, drop them, and add named replacements that include the new kind.
+do $$
+declare c record;
+begin
+  for c in
+    select conname from pg_constraint
+    where conrelid = 'public.rankings'::regclass and contype = 'c'
+      and (pg_get_constraintdef(oid) like '%fav_artists%'
+           or pg_get_constraintdef(oid) like '%source_id IS NOT NULL%')
+  loop
+    execute format('alter table public.rankings drop constraint %I', c.conname);
+  end loop;
+end $$;
+
+alter table public.rankings add constraint rankings_kind_check
+  check (kind in ('artist', 'artist_albums', 'album', 'fav_artists', 'fav_tracks'));
+
+-- an artist / album ranking always names what it ranks; favourites never do
+alter table public.rankings add constraint rankings_source_check
+  check ((kind in ('artist', 'artist_albums', 'album')) = (source_id is not null));

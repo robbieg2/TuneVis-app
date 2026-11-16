@@ -114,7 +114,7 @@ function rankingRow(r) {
     const kindLabel = KIND_LABELS[r.kind] || "Ranking";
     const about = r.source_name ? ` · ${r.source_name}` : "";
     const updated = new Date(r.updated_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-    const round = r.kind === "artist" || r.kind === "fav_artists" ? " round" : "";
+    const round = ["artist", "artist_albums", "fav_artists"].includes(r.kind) ? " round" : "";
     const rating = r.kind === "album" && r.rating != null ? Number(r.rating) : null;
     const inFolders = foldersOf(r.id).filter(f => f.id !== active);
 

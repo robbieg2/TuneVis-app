@@ -1,19 +1,29 @@
 // rank.js — artist / album ranking workspace
+//
+// An album page ranks the album's tracks (and gives it a star rating). An artist page
+// ranks either the artist's top tracks or their albums ("Top tracks / Albums" toggle);
+// each list keeps its own ranking, name and saved copy. A saved ranking opens as a
+// finished, read-only list (rank-view.js); Edit switches to the two-column workspace.
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
-import { initSaveButton } from "./saved-rankings.js";
-import { createStarRating, parseRating, starsText, formatRating } from "./star-rating.js";
+import { initSaveButton, KIND_LABELS } from "./saved-rankings.js";
+import { createStarRating, parseRating, starsText, starsHtml, formatRating } from "./star-rating.js";
+import { setViewMode, renderRankView } from "./rank-view.js";
 
 const backBtn = document.getElementById("back-btn");
-const shareBtn = document.getElementById("share-btn");
 const listNameInput = document.getElementById("list-name-input");
 const exportBtn = document.getElementById("export-btn");
 const saveBtn = document.getElementById("save-rank-btn");
+const doneBtn = document.getElementById("rank-done-btn");
+const editBtn = document.getElementById("rank-edit-btn");
+const viewExportBtn = document.getElementById("rank-view-export-btn");
+const listToggleEl = document.getElementById("rank-list-toggle");
 const loadingEl = document.getElementById("rank-page-loading");
 const pageEl = document.getElementById("rank-page");
 const headEl = document.getElementById("rank-head");
 const filterEl = document.getElementById("rank-filter-toggle");
 const trackListEl = document.getElementById("track-list");
+const trackListTitleEl = document.getElementById("rank-panel-tracks-title");
 const rankListEl = document.getElementById("rank-list");
 const rankTitleEl = document.getElementById("rank-panel-ranking-title");
 const playerWrapEl = document.getElementById("rank-player-wrap");
@@ -29,19 +39,30 @@ if (backBtn) backBtn.addEventListener("click", () => history.back());
 
 // ── State ──────────────────────────────────────────────────────────────
 let meta = null;             // { type, id, name, subtitle, image }
-let allTracks = [];          // full lookup pool (id -> metadata), used for rank list rendering
-let leftPanelTracks = [];    // subset actually rendered in the left tracklist column
+let list = "tracks";         // artist pages: "tracks" (top tracks) or "albums"
+let allTracks = [];          // lookup pool for the current list (tracks or albums)
+let leftPanelTracks = [];    // what the left column shows (albums mode: filtered by search)
 let sizeOptions = [];        // [{ label, value }]
 let rankSize = 5;
-let rankedIds = [];          // ordered array of track ids, length <= rankSize
+let rankedIds = [];          // ordered ids, length <= rankSize
 let listName = "";           // user-editable title for this ranking, used in exports
 let savedId = null;          // the saved ranking (account) this page is editing, if any
-let saveCtl = { refresh() {}, reset() {} };
+let saveCtl = { refresh() {}, reset() {}, isDirty: () => false, save: async () => true };
 let rating = null;           // album only: overall star rating, 0.5–5 in half steps
+let viewing = false;         // showing a saved ranking as a finished list
 
-function addToPool(track) {
-    if (!allTracks.some(t => t.id === track.id)) {
-        allTracks = [...allTracks, track];
+// Artist pages keep each list's ranking separately, so switching between
+// "Top tracks" and "Albums" never loses either one.
+const listState = { tracks: null, albums: null };
+let albumPool = null;        // the artist's albums, loaded the first time Albums is opened
+
+const isAlbumsList = () => meta?.type === "artist" && list === "albums";
+const itemWord = () => (isAlbumsList() ? "album" : "track");
+const kind = () => (meta.type === "album" ? "album" : isAlbumsList() ? "artist_albums" : "artist");
+
+function addToPool(item) {
+    if (!allTracks.some(t => t.id === item.id)) {
+        allTracks = [...allTracks, item];
     }
 }
 
@@ -50,23 +71,28 @@ function getParams() {
     return {
         type: p.get("type"),
         id: p.get("id"),
+        list: p.get("list") === "albums" ? "albums" : "tracks",
         size: p.get("size") ? Number(p.get("size")) : null,
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
         name: p.get("name") || null,
         saved: p.get("saved") || null,
         rating: parseRating(p.get("rating")),
+        edit: p.get("edit") === "1",
     };
 }
 
-function rankingParams({ includeSaved = true } = {}) {
+function rankingParams() {
     const p = new URLSearchParams();
     p.set("type", meta.type);
     p.set("id", meta.id);
+    if (isAlbumsList()) p.set("list", "albums");
     p.set("size", String(rankSize));
     if (rankedIds.length) p.set("order", rankedIds.join(","));
     if (listName) p.set("name", listName);
     if (meta.type === "album" && rating) p.set("rating", String(rating));
-    if (includeSaved && savedId) p.set("saved", savedId);
+    if (savedId) p.set("saved", savedId);
+    // A saved ranking opens as the finished list unless the URL says it's being edited.
+    if (savedId && !viewing) p.set("edit", "1");
     return p;
 }
 
@@ -76,9 +102,13 @@ function syncUrl() {
 }
 
 // ── Saving to an account ───────────────────────────────────────────────
+function itemSubtitle(t) {
+    return (t.artists || []).join(", ");
+}
+
 function getSaveRecord() {
     return {
-        kind: meta.type,
+        kind: kind(),
         source_id: meta.id,
         source_name: meta.name,
         genre: null,
@@ -88,7 +118,7 @@ function getSaveRecord() {
         items: rankedIds
             .map(id => allTracks.find(t => t.id === id))
             .filter(Boolean)
-            .map(t => ({ id: t.id, name: t.name, subtitle: (t.artists || []).join(", "), image: t.image || "" })),
+            .map(t => ({ id: t.id, name: t.name, subtitle: itemSubtitle(t), image: t.image || "" })),
         image: meta.image || null,
         // Only album rankings have a rating column value.
         ...(meta.type === "album" ? { rating } : {}),
@@ -100,12 +130,27 @@ function initSave() {
         button: saveBtn,
         getRecord: getSaveRecord,
         getSavedId: () => savedId,
-        setSavedId: id => { savedId = id; syncUrl(); },
-        emptyMessage: meta.type === "album"
+        setSavedId: id => { savedId = id; refreshDoneButton(); syncUrl(); },
+        emptyMessage: () => meta.type === "album"
             ? "Give the album a star rating or add at least one track before saving."
-            : "Add at least one track to your ranking before saving.",
+            : `Add at least one ${itemWord()} to your ranking before saving.`,
     });
 }
+
+// "Done" finishes editing a saved ranking: saves any changes, then shows the list.
+function refreshDoneButton() {
+    if (doneBtn) doneBtn.hidden = !savedId || saveBtn?.hidden;
+}
+
+doneBtn?.addEventListener("click", async () => {
+    if (saveCtl.isDirty()) {
+        doneBtn.disabled = true;
+        const ok = await saveCtl.save();
+        doneBtn.disabled = false;
+        if (!ok) return;
+    }
+    enterView();
+});
 
 // Tracks added from the catalog search aren't in the top tracks / tracklist, so a
 // ranking reopened from a link or a saved ranking looks those up by id.
@@ -124,8 +169,21 @@ async function addMissingTracks(token, ids) {
     }
 }
 
+// Albums mode: a saved album that the de-duplicated list doesn't include (e.g. a
+// deluxe edition picked earlier) is looked up by id.
+async function addMissingAlbums(token, ids) {
+    const missing = ids.filter(id => !allTracks.some(t => t.id === id));
+    for (let i = 0; i < missing.length; i += 20) {
+        try {
+            const data = await spotifyFetch(token, `https://api.spotify.com/v1/albums?ids=${missing.slice(i, i + 20).join(",")}&market=GB`);
+            (data?.albums || []).filter(Boolean).forEach(al => addToPool(albumItem(al)));
+        } catch {}
+    }
+}
+
 function defaultListName() {
-    return meta.type === "album" ? `${meta.name} Ranking` : `${meta.name} Top Tracks`;
+    if (meta.type === "album") return `${meta.name} Ranking`;
+    return isAlbumsList() ? `${meta.name} Albums Ranking` : `${meta.name} Top Tracks`;
 }
 
 function initListName() {
@@ -158,6 +216,16 @@ async function spotifyFetch(token, url) {
     if (!res.ok) throw new Error(`Spotify fetch failed: ${res.status}`);
     return res.json();
 }
+
+// Top 5 / Top 10, capped at how many there are (one option if they'd be the same).
+const trackSizeOptions = () => {
+    const five = Math.min(5, allTracks.length) || 5;
+    const ten = Math.min(10, allTracks.length) || 10;
+    return ten === five ? [{ label: `Top ${five}`, value: five }] : [
+        { label: "Top 5", value: five },
+        { label: "Top 10", value: ten },
+    ];
+};
 
 async function loadArtist(token, id) {
     const artist = await spotifyFetch(token, `https://api.spotify.com/v1/artists/${id}`);
@@ -208,6 +276,47 @@ async function loadAlbum(token, id) {
     ];
 }
 
+function albumItem(al) {
+    const year = (al.release_date || "").slice(0, 4);
+    return {
+        id: al.id,
+        name: al.name,
+        artists: [year ? `${year} · Album` : "Album"],   // shown as the row's subtitle
+        image: al.images?.[0]?.url || meta.image,
+        releaseDate: al.release_date || "",
+    };
+}
+
+// "Album (Deluxe Edition)", "Album - 2011 Remaster" … all count as the same album.
+function albumKey(name) {
+    return String(name).toLowerCase()
+        .replace(/\s*[([][^)\]]*(deluxe|edition|remaster|expanded|version|anniversary|bonus|live)[^)\]]*[)\]]/g, "")
+        .replace(/\s*-\s*.*(deluxe|edition|remaster|expanded|version|anniversary).*$/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+// The artist's studio albums (no singles or compilations), one entry per album
+// (the original release where Spotify lists several editions), newest first.
+async function loadArtistAlbums(token) {
+    let url = `https://api.spotify.com/v1/artists/${meta.id}/albums?include_groups=album&market=GB&limit=50`;
+    const raw = [];
+    for (let page = 0; url && page < 4; page++) {
+        const data = await spotifyFetch(token, url);
+        raw.push(...(data?.items || []));
+        url = data?.next || null;
+    }
+    const byOldest = raw.slice().sort((a, b) => String(a.release_date).localeCompare(String(b.release_date)));
+    const seen = new Set();
+    const unique = byOldest.filter(al => {
+        const key = albumKey(al.name);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return unique.map(albumItem).sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+}
+
 // ── Rendering ──────────────────────────────────────────────────────────
 function renderHead() {
     headEl.innerHTML = `
@@ -222,17 +331,27 @@ function renderHead() {
     `;
 
     document.getElementById("rank-play-btn")?.addEventListener("click", togglePlayer);
+    const metaBox = headEl.querySelector(".rank-head-meta");
 
-    // Albums get an overall star rating alongside the track order.
-    if (meta.type === "album") {
-        const { el } = createStarRating({
-            value: rating,
-            label: `Your rating for ${meta.name}`,
-            onChange: value => { rating = value; syncUrl(); },
-        });
-        el.classList.add("rank-head-rating");
-        headEl.querySelector(".rank-head-meta").appendChild(el);
+    if (meta.type !== "album") return;
+    if (viewing) {
+        // The finished list shows the rating; it's changed in edit mode.
+        if (rating) {
+            const el = document.createElement("div");
+            el.className = "rank-head-rating rank-head-rating-static";
+            el.innerHTML = `${starsHtml(rating, { size: 22 })}<span>${formatRating(rating)} / 5</span>`;
+            metaBox.appendChild(el);
+        }
+        return;
     }
+    // Albums get an overall star rating alongside the track order.
+    const { el } = createStarRating({
+        value: rating,
+        label: `Your rating for ${meta.name}`,
+        onChange: value => { rating = value; syncUrl(); },
+    });
+    el.classList.add("rank-head-rating");
+    metaBox.appendChild(el);
 }
 
 function togglePlayer() {
@@ -286,7 +405,7 @@ function trackRow(track) {
         ${track.image ? `<img class="track-row-img" src="${esc(track.image)}" alt="">` : `<div class="track-row-img rank-result-placeholder"></div>`}
         <div class="track-row-meta">
             <span class="track-row-name">${esc(track.name)}</span>
-            <span class="track-row-sub">${esc((track.artists || []).join(", "))}</span>
+            <span class="track-row-sub">${esc(itemSubtitle(track))}</span>
         </div>
         ${isRanked
             ? `<span class="track-row-check" aria-hidden="true">&#10003;</span>`
@@ -306,6 +425,9 @@ function trackRow(track) {
 
 function renderTrackList() {
     trackListEl.innerHTML = "";
+    if (!leftPanelTracks.length && isAlbumsList()) {
+        trackListEl.innerHTML = `<p class="track-suggestion-empty">${trackSearchInput?.value.trim() ? "No albums match that search." : "No albums found for this artist."}</p>`;
+    }
     leftPanelTracks.forEach(t => trackListEl.appendChild(trackRow(t)));
     updateTrackListHeight();
 }
@@ -324,7 +446,7 @@ function rankRow(trackId, index) {
 
     if (!track) {
         row.classList.add("empty");
-        row.innerHTML = `<span class="rank-row-num">${index + 1}</span><span class="rank-row-empty-text">Add a track</span>`;
+        row.innerHTML = `<span class="rank-row-num">${index + 1}</span><span class="rank-row-empty-text">Add ${isAlbumsList() ? "an album" : "a track"}</span>`;
         return row;
     }
 
@@ -333,7 +455,7 @@ function rankRow(trackId, index) {
         ${track.image ? `<img class="track-row-img" src="${esc(track.image)}" alt="">` : ""}
         <div class="track-row-meta">
             <span class="track-row-name">${esc(track.name)}</span>
-            <span class="track-row-sub">${esc((track.artists || []).join(", "))}</span>
+            <span class="track-row-sub">${esc(itemSubtitle(track))}</span>
         </div>
         <div class="rank-row-controls">
             <button class="rank-row-move" data-dir="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}>&#9650;</button>
@@ -381,6 +503,125 @@ function renderAll() {
     renderRankList();
 }
 
+// Labels that depend on whether the artist page is ranking tracks or albums.
+function applyListLabels() {
+    const albums = isAlbumsList();
+    if (trackListTitleEl) trackListTitleEl.textContent = albums ? "Albums" : "Tracklist";
+    const mobileTab = document.querySelector('.rank-mobile-tabs .tab-btn[data-panel="tracks"]');
+    if (mobileTab) mobileTab.textContent = albums ? "Albums" : "Tracklist";
+    if (trackSearchInput) {
+        trackSearchInput.placeholder = albums ? "Filter this artist's albums..." : "Search songs or albums by this artist...";
+    }
+    if (trackSearchBtn) trackSearchBtn.hidden = albums;   // albums filter as you type
+    listToggleEl?.querySelectorAll("[data-list]").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.list === list);
+        btn.setAttribute("aria-pressed", String(btn.dataset.list === list));
+    });
+}
+
+// ── Finished-list view and edit mode ──────────────────────────────────
+function viewItems() {
+    const round = false;
+    return rankedIds
+        .map(id => allTracks.find(t => t.id === id))
+        .filter(Boolean)
+        .map(t => ({ name: t.name, subtitle: itemSubtitle(t), image: t.image, round }));
+}
+
+function renderView() {
+    const items = viewItems();
+    const label = KIND_LABELS[kind()] || "Ranking";
+    const noun = isAlbumsList() ? "albums" : "tracks";
+    const count = meta.type === "album"
+        ? `${items.length} of ${allTracks.length} tracks ranked`
+        : items.length >= rankSize ? `Top ${rankSize} ${noun}` : `${items.length} of top ${rankSize} ${noun} ranked`;
+    renderRankView({
+        title: listName || defaultListName(),
+        meta: `${label} · ${count}`,
+        items,
+        emptyText: meta.type === "album" ? "No tracks ranked yet." : `No ${itemWord()}s ranked yet.`,
+    });
+}
+
+function enterView() {
+    viewing = true;
+    hideSuggestions();
+    renderHead();
+    renderView();
+    setViewMode(true);
+    syncUrl();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function enterEdit() {
+    viewing = false;
+    renderHead();
+    setViewMode(false);
+    if (listToggleEl) listToggleEl.hidden = meta.type !== "artist";
+    applyListLabels();
+    refreshDoneButton();
+    renderAll();
+    syncUrl();
+}
+
+editBtn?.addEventListener("click", enterEdit);
+viewExportBtn?.addEventListener("click", openExportModal);
+
+// ── Top tracks / Albums (artist pages) ───────────────────────────────
+function saveListState() {
+    listState[list] = {
+        allTracks, leftPanelTracks, sizeOptions, rankSize,
+        rankedIds: rankedIds.slice(), listName, savedId,
+    };
+}
+
+async function switchList(next, { restore = null } = {}) {
+    if (meta.type !== "artist" || next === list) return;
+    saveListState();
+    list = next;
+    if (trackSearchInput) trackSearchInput.value = "";
+    hideSuggestions();
+    applyListLabels();
+
+    const saved = listState[list];
+    if (saved) {
+        ({ allTracks, leftPanelTracks, sizeOptions, rankSize, listName, savedId } = saved);
+        rankedIds = saved.rankedIds.slice();
+    } else {
+        trackListEl.innerHTML = `<p class="tab-loading">Loading albums…</p>`;
+        if (!albumPool) {
+            try {
+                albumPool = await loadArtistAlbums(cachedToken);
+            } catch (err) {
+                console.error(err);
+                albumPool = [];
+            }
+        }
+        if (list !== next) return;   // switched back while loading
+        allTracks = albumPool.slice();
+        leftPanelTracks = allTracks.slice();
+        sizeOptions = trackSizeOptions();
+        rankSize = restore?.size && sizeOptions.some(o => o.value === restore.size) ? restore.size : sizeOptions[0].value;
+        rankedIds = [];
+        if (restore?.order?.length) {
+            await addMissingAlbums(cachedToken, restore.order.slice(0, rankSize));
+            rankedIds = restore.order.filter(id => allTracks.some(t => t.id === id)).slice(0, rankSize);
+        }
+        listName = restore?.name || defaultListName();
+        savedId = restore?.saved || null;
+    }
+    if (listNameInput) listNameInput.value = listName;
+    saveCtl.reset();
+    refreshDoneButton();
+    renderAll();
+    syncUrl();
+}
+
+listToggleEl?.addEventListener("click", e => {
+    const btn = e.target.closest("[data-list]");
+    if (btn) switchList(btn.dataset.list);
+});
+
 // ── Mobile tabs ────────────────────────────────────────────────────────
 function initMobileTabs() {
     const tabs = document.querySelectorAll(".rank-mobile-tabs .tab-btn");
@@ -395,23 +636,6 @@ function initMobileTabs() {
             tracksPanel.classList.toggle("mobile-hidden", which !== "tracks");
             rankingPanel.classList.toggle("mobile-hidden", which !== "ranking");
         });
-    });
-}
-
-// ── Share ──────────────────────────────────────────────────────────────
-function initShare() {
-    if (!shareBtn) return;
-    shareBtn.addEventListener("click", async () => {
-        try {
-            // The shared link carries the ranking, not which account row it was saved as.
-            const link = `${window.location.origin}${window.location.pathname}?${rankingParams({ includeSaved: false }).toString()}`;
-            await navigator.clipboard.writeText(link);
-            const original = shareBtn.textContent;
-            shareBtn.textContent = "Link copied";
-            setTimeout(() => (shareBtn.textContent = original), 1600);
-        } catch {
-            alert("Couldn't copy the link automatically — you can copy it from the address bar.");
-        }
     });
 }
 
@@ -431,7 +655,7 @@ function getRankedItemsForExport() {
     return rankedIds
         .map(id => allTracks.find(t => t.id === id))
         .filter(Boolean)
-        .map(t => ({ name: t.name, subtitle: (t.artists || []).join(", "), image: t.image }));
+        .map(t => ({ name: t.name, subtitle: itemSubtitle(t), image: t.image }));
 }
 
 function initExport() {
@@ -442,7 +666,7 @@ function initExport() {
 async function openExportModal() {
     const items = getRankedItemsForExport();
     if (!items.length) {
-        alert("Add at least one track to your ranking before exporting.");
+        alert(`Add at least one ${itemWord()} to your ranking before exporting.`);
         return;
     }
 
@@ -470,7 +694,9 @@ async function openExportModal() {
     modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
 
     const ratingNote = meta.type === "album" && rating ? `  ·  ${starsText(rating)} ${formatRating(rating)}/5` : "";
-    const subtitle = meta.type === "album" ? `${meta.subtitle}${ratingNote}` : "Top Tracks";
+    const subtitle = meta.type === "album"
+        ? `${meta.subtitle}${ratingNote}`
+        : isAlbumsList() ? `${meta.name} · Albums` : "Top Tracks";
     const exportData = { title: listName || defaultListName(), subtitle, items };
 
     document.getElementById("export-copy-btn")?.addEventListener("click", async () => {
@@ -505,12 +731,21 @@ async function openExportModal() {
     }
 }
 
-// ── Extra catalog search (artists only — deep cuts beyond top tracks) ──
+// ── Search (artist pages) ─────────────────────────────────────────────
+// Top tracks: a Spotify catalog search for deep cuts beyond the top tracks.
+// Albums: filters the artist's album list as you type.
+function filterAlbums(q) {
+    const needle = q.trim().toLowerCase();
+    leftPanelTracks = needle ? allTracks.filter(a => a.name.toLowerCase().includes(needle)) : allTracks.slice();
+    renderTrackList();
+}
+
 function initTrackSearch() {
     if (meta.type !== "artist" || !trackSearchEl) return;
     trackSearchEl.style.display = "flex";
 
     const run = () => {
+        if (isAlbumsList()) return;
         const q = trackSearchInput.value.trim();
         clearTimeout(suggestDebounce);
         if (q.length >= 2) fetchSearchResults(q);
@@ -524,6 +759,7 @@ function initTrackSearch() {
     });
 
     trackSearchInput?.addEventListener("input", () => {
+        if (isAlbumsList()) { filterAlbums(trackSearchInput.value); return; }
         const q = trackSearchInput.value.trim();
         clearTimeout(suggestDebounce);
         if (q.length < 2) {
@@ -632,7 +868,7 @@ async function fetchSearchResults(query) {
 
         // A faster, more recent keystroke may have already resolved —
         // ignore this response if it's no longer the latest search in flight.
-        if (requestId !== searchRequestId) return;
+        if (requestId !== searchRequestId || isAlbumsList()) return;
         renderSearchResults(combined);
     } catch (err) {
         if (requestId !== searchRequestId) return;
@@ -674,7 +910,8 @@ function renderSearchResults(results) {
 
 // ── Init ───────────────────────────────────────────────────────────────
 async function init() {
-    const { type, id, size, order, name, saved, rating: ratingParam } = getParams();
+    const params = getParams();
+    const { type, id, size, order, name, saved, rating: ratingParam } = params;
 
     if (!type || !id || (type !== "artist" && type !== "album")) {
         loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">No artist or album selected</div><div class="loading-sub">Go back and search for one to rank.</div></div>`;
@@ -693,27 +930,36 @@ async function init() {
         }
 
         leftPanelTracks = allTracks.slice();
-
-        rankSize = size && sizeOptions.some(o => o.value === size) ? size : sizeOptions[0].value;
-        await addMissingTracks(token, order.slice(0, rankSize));
-        rankedIds = order.filter(oid => allTracks.some(t => t.id === oid)).slice(0, rankSize);
-        listName = name || defaultListName();
-        savedId = saved;
         rating = type === "album" ? ratingParam : null;
+        // A saved ranking opens as the finished list, unless the URL says it's being edited.
+        viewing = Boolean(saved) && !params.edit;
 
-        renderHead();
-        renderAll();
+        if (type === "artist" && params.list === "albums") {
+            // Start the Top tracks list fresh, then open Albums with the URL's ranking.
+            rankSize = sizeOptions[0].value;
+            listName = `${meta.name} Top Tracks`;
+            await switchList("albums", { restore: { size, order, name, saved } });
+        } else {
+            rankSize = size && sizeOptions.some(o => o.value === size) ? size : sizeOptions[0].value;
+            await addMissingTracks(token, order.slice(0, rankSize));
+            rankedIds = order.filter(oid => allTracks.some(t => t.id === oid)).slice(0, rankSize);
+            listName = name || defaultListName();
+            savedId = saved;
+        }
+
         initMobileTabs();
-        initShare();
         initTrackSearch();
         initClearButton();
         initListName();
         initExport();
         initSave();
+        refreshDoneButton();
+
+        if (viewing) enterView();
+        else enterEdit();
 
         loadingEl.style.display = "none";
         pageEl.style.display = "block";
-        syncUrl();
     } catch (err) {
         console.error(err);
         loadingEl.innerHTML = `<div class="loading-card"><div class="loading-title">Something went wrong</div><div class="loading-sub">Please try again later.</div></div>`;

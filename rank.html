@@ -61,8 +61,6 @@
         <span class="header-logo-text">TuneVis</span>
       </div>
     </a>
-
-    <button id="share-btn">Copy link</button>
   </header>
 
   <div id="rank-page-loading" class="loading-overlay">
@@ -76,14 +74,32 @@
   <div id="rank-page" style="display:none;">
     <div class="rank-head" id="rank-head"></div>
 
+    <div class="rank-player-wrap" id="rank-player-wrap" style="display:none;"></div>
+
+    <!-- A saved ranking opens as a finished list; Edit switches to the workspace below. -->
+    <section class="rank-view" id="rank-view" hidden>
+      <h2 class="rank-view-title" id="rank-view-title"></h2>
+      <p class="rank-view-meta" id="rank-view-meta"></p>
+      <ol class="rank-view-list" id="rank-view-list"></ol>
+      <div class="rank-view-actions">
+        <button id="rank-edit-btn" type="button">Edit ranking</button>
+        <button id="rank-view-export-btn" type="button" class="secondary-btn">Export</button>
+      </div>
+    </section>
+
+    <div id="rank-edit">
     <div class="list-name-row">
       <label for="list-name-input" class="sr-only-label">List name</label>
       <input type="text" id="list-name-input" class="list-name-input" placeholder="Name your ranking..." />
       <button id="export-btn" type="button">Export</button>
       <button id="save-rank-btn" type="button" class="save-rank-btn" hidden>Save</button>
+      <button id="rank-done-btn" type="button" class="secondary-btn" hidden>Done</button>
     </div>
 
-    <div class="rank-player-wrap" id="rank-player-wrap" style="display:none;"></div>
+    <div class="rank-mode-toggle" id="rank-list-toggle" role="group" aria-label="What to rank" hidden>
+      <button class="tab-btn active" type="button" data-list="tracks">Top tracks</button>
+      <button class="tab-btn" type="button" data-list="albums">Albums</button>
+    </div>
 
     <div class="rank-filter-toggle" id="rank-filter-toggle"></div>
 
@@ -112,6 +128,7 @@
         </div>
         <div class="rank-list" id="rank-list"></div>
       </section>
+    </div>
     </div>
   </div>
 
