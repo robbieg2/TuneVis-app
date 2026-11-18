@@ -1,43 +1,14 @@
 {
-  "id": "/home.html",
   "name": "TuneVis",
   "short_name": "TuneVis",
   "description": "Interactive music recommender: explore a song's audio features, find similar tracks and rank your favourites.",
   "start_url": "/home.html",
-  "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#121212",
   "icons": [
-    {
-      "src": "/icons/icon-192.png?v=4",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-512.png?v=4",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-maskable-192.png?v=4",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-maskable-512.png?v=4",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/apple-touch-icon.png?v=4",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
