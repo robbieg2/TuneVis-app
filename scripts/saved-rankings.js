@@ -37,6 +37,17 @@ export const KIND_LABELS = {
     fav_tracks: "Favourite tracks",
 };
 
+// The saved rankings page has a tab per section, and each section has its own folders
+// (public.ranking_section() in supabase/schema.sql maps kinds the same way).
+export const SECTION_OF_KIND = {
+    album: "album",
+    artist_albums: "artist_albums",
+    artist: "artist",
+    fav_artists: "favourites",
+    fav_tracks: "favourites",
+};
+export const sectionOf = kind => SECTION_OF_KIND[kind] || "album";
+
 // A saved ranking's page. Without &edit=1 it opens as the finished list.
 export function rankingUrl(r) {
     const p = new URLSearchParams();
@@ -192,20 +203,31 @@ export const FOLDER_LIMIT = 50;
 // The tables don't exist until the folders migration has been run.
 const isMissingTable = error => error?.code === "42P01" || error?.code === "PGRST205";
 
-// { folders: [{ id, name }], items: [{ folder_id, ranking_id }], available }.
+// { folders: [{ id, name, section }], items: [{ folder_id, ranking_id }], available, sectioned }.
 // available is false if the database hasn't got folders yet (or the user is signed out).
+// sectioned is false before the folders-by-kind migration: folders then have no
+// section and are shared by every kind of ranking, as before.
 export async function loadFolders() {
     const supabase = await getSupabase();
-    if (!supabase || !(await getUser())) return { folders: [], items: [], available: false };
-    const [f, i] = await Promise.all([
-        supabase.from("ranking_folders").select("id, name, created_at").order("created_at", { ascending: true }),
+    const none = { folders: [], items: [], available: false, sectioned: false };
+    if (!supabase || !(await getUser())) return none;
+    const selectFolders = columns => supabase.from("ranking_folders").select(columns).order("created_at", { ascending: true });
+    let [f, i] = await Promise.all([
+        selectFolders("id, name, section, created_at"),
         supabase.from("ranking_folder_items").select("folder_id, ranking_id"),
     ]);
-    if (isMissingTable(f.error) || isMissingTable(i.error)) return { folders: [], items: [], available: false };
+    if (isMissingTable(f.error) || isMissingTable(i.error)) return none;
+    const sectioned = !isMissingColumn(f.error);
+    if (!sectioned) f = await selectFolders("id, name, created_at");
     if (f.error) throw f.error;
     if (i.error) throw i.error;
-    return { folders: f.data || [], items: i.data || [], available: true };
+    const folders = (f.data || []).map(x => ({ ...x, section: sectioned ? x.section : null }));
+    return { folders, items: i.data || [], available: true, sectioned };
 }
+
+// The folders a ranking of this section can go in (all of them before the migration).
+export const foldersForSection = (folders, section) =>
+    folders.filter(f => f.section == null || f.section === section);
 
 export function folderNameProblem(name, existing = [], ignoreId = null) {
     const value = String(name ?? "").trim();
@@ -219,13 +241,19 @@ export function folderNameProblem(name, existing = [], ignoreId = null) {
 
 const duplicateName = name => `You already have a folder called "${name}".`;
 
-// Returns { folder } or { error }.
-export async function createFolder(name) {
+// A folder in one section ("album", "artist_albums", ...). Returns { folder } or { error }.
+export async function createFolder(name, section) {
     const supabase = await getSupabase();
     const value = String(name).trim();
-    const { data, error } = await supabase.from("ranking_folders").insert({ name: value }).select("id, name, created_at").single();
+    const insert = row => supabase.from("ranking_folders").insert(row).select("id, name, created_at").single();
+    let { data, error } = await insert({ name: value, section });
+    let saved = section;
+    if (isMissingColumn(error)) {       // before the folders-by-kind migration
+        ({ data, error } = await insert({ name: value }));
+        saved = null;
+    }
     if (error) return { error: error.code === "23505" ? duplicateName(value) : "That folder couldn't be created just now." };
-    return { folder: data };
+    return { folder: { ...data, section: saved } };
 }
 
 export async function renameFolder(id, name) {

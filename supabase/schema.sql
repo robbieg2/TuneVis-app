@@ -244,3 +244,86 @@ alter table public.rankings add constraint rankings_kind_check
 -- an artist / album ranking always names what it ranks; favourites never do
 alter table public.rankings add constraint rankings_source_check
   check ((kind in ('artist', 'artist_albums', 'album')) = (source_id is not null));
+
+
+-- ===========================================================================
+-- Migration (Nov 2026): separate folders for each kind of ranking
+-- On an existing database, run just this block (from here to the end of the file)
+-- in the SQL Editor.
+-- ===========================================================================
+
+-- Which tab of the saved rankings a kind of ranking belongs to. Folders live in one
+-- tab: album rankings and artist album rankings each have their own folders.
+create or replace function public.ranking_section(kind text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case kind
+    when 'album'         then 'album'
+    when 'artist_albums' then 'artist_albums'
+    when 'artist'        then 'artist'
+    else 'favourites'    -- fav_artists, fav_tracks
+  end;
+$$;
+
+alter table public.ranking_folders add column section text not null default 'album';
+alter table public.ranking_folders add constraint ranking_folders_section_check
+  check (section in ('album', 'artist_albums', 'artist', 'favourites'));
+
+-- Folder names are now unique per user within a section, so "Favourites" can exist
+-- for albums and for artist albums.
+drop index public.ranking_folders_user_name;
+create unique index ranking_folders_user_section_name
+  on public.ranking_folders (user_id, section, lower(btrim(name)));
+
+-- Existing folders take the section of the rankings in them. A folder holding
+-- several kinds is split: one folder of the same name per section, each keeping
+-- its own rankings. Empty folders stay with albums.
+do $$
+declare
+  f record;
+  s text;
+  first_section text;
+  new_id uuid;
+begin
+  for f in select * from public.ranking_folders loop
+    first_section := null;
+    for s in
+      select distinct public.ranking_section(r.kind)
+      from public.ranking_folder_items i
+      join public.rankings r on r.id = i.ranking_id
+      where i.folder_id = f.id
+      order by 1
+    loop
+      if first_section is null then
+        first_section := s;
+        update public.ranking_folders set section = s where id = f.id;
+      else
+        insert into public.ranking_folders (user_id, name, section, created_at)
+        values (f.user_id, f.name, s, f.created_at)
+        returning id into new_id;
+        update public.ranking_folder_items i set folder_id = new_id
+        from public.rankings r
+        where i.folder_id = f.id and r.id = i.ranking_id
+          and public.ranking_section(r.kind) = s;
+      end if;
+    end loop;
+  end loop;
+end $$;
+
+-- A ranking can only go into a folder of its own section.
+drop policy "Users manage their own folder items" on public.ranking_folder_items;
+create policy "Users manage their own folder items"
+  on public.ranking_folder_items for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check (
+    (select auth.uid()) = user_id
+    and exists (
+      select 1
+      from public.ranking_folders f
+      join public.rankings r on r.id = ranking_id
+      where f.id = folder_id and f.section = public.ranking_section(r.kind)
+    )
+  );

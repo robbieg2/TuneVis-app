@@ -2,7 +2,7 @@
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 import { initSaveButton, KIND_LABELS } from "./saved-rankings.js";
-import { setViewMode, renderRankView } from "./rank-view.js";
+import { setViewMode, renderRankView, setSavedRanking } from "./rank-view.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
@@ -139,7 +139,7 @@ function initSave() {
         button: saveBtn,
         getRecord: getSaveRecord,
         getSavedId: () => savedId,
-        setSavedId: id => { savedId = id; refreshDoneButton(); syncUrl(); },
+        setSavedId: id => { savedId = id; refreshDoneButton(); syncUrl(); syncSavedRanking(); },
         emptyMessage: () => `Add at least one ${mode === "artist" ? "artist" : "track"} to your ranking before saving.`,
     });
 }
@@ -160,7 +160,13 @@ doneBtn?.addEventListener("click", async () => {
     enterView();
 });
 
+// Tells the finished-list view which saved ranking it shows (for Add to folder / Delete).
+function syncSavedRanking() {
+    setSavedRanking(savedId ? { id: savedId, kind: (mode === "artist" ? "fav_artists" : "fav_tracks"), title: listName || defaultListName() } : null);
+}
+
 function renderView() {
+    syncSavedRanking();
     const items = rankedIds
         .map(id => pool.find(p => p.id === id))
         .filter(Boolean)

@@ -8,7 +8,7 @@ import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 import { initSaveButton, KIND_LABELS, listRankings, rankingUrl } from "./saved-rankings.js";
 import { createStarRating, parseRating, starsText, starsHtml, formatRating } from "./star-rating.js";
-import { setViewMode, renderRankView } from "./rank-view.js";
+import { setViewMode, renderRankView, setSavedRanking } from "./rank-view.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
 
 const backBtn = document.getElementById("back-btn");
@@ -131,7 +131,7 @@ function initSave() {
         button: saveBtn,
         getRecord: getSaveRecord,
         getSavedId: () => savedId,
-        setSavedId: id => { savedId = id; refreshDoneButton(); syncUrl(); },
+        setSavedId: id => { savedId = id; refreshDoneButton(); syncUrl(); syncSavedRanking(); },
         emptyMessage: () => meta.type === "album"
             ? "Give the album a star rating or add at least one track before saving."
             : `Add at least one ${itemWord()} to your ranking before saving.`,
@@ -610,7 +610,13 @@ function viewItems() {
         }));
 }
 
+// Tells the finished-list view which saved ranking it shows (for Add to folder / Delete).
+function syncSavedRanking() {
+    setSavedRanking(savedId ? { id: savedId, kind: kind(), title: listName || defaultListName() } : null);
+}
+
 function renderView() {
+    syncSavedRanking();
     const items = viewItems();
     const label = KIND_LABELS[kind()] || "Ranking";
     const noun = isAlbumsList() ? "albums & EPs" : "tracks";

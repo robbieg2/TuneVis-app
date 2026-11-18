@@ -2567,10 +2567,12 @@ button:disabled {
     color: rgba(255, 255, 255, 0.8);
 }
 
+/* Rename / Delete for the open folder, under its list. */
 .folder-tools {
     display: flex;
+    justify-content: center;
     gap: 8px;
-    margin: -2px 0 12px;
+    margin: 16px 0 4px;
 }
 
 .folder-tool-btn {
@@ -2581,8 +2583,18 @@ button:disabled {
     padding: 5px 12px;
 }
 
-.folder-tool-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
-.folder-tool-btn.danger:hover { border-color: rgba(255, 80, 80, 0.6); background: rgba(255, 80, 80, 0.12); }
+.folder-tool-btn.danger {
+    color: #ff9b9b;
+    border-color: rgba(255, 80, 80, 0.35);
+}
+
+/* Hover colours only where there's a real pointer: on phones a tap leaves the
+   hover state on whatever ends up under the finger (the Delete button went red
+   when it appeared under the tap and stayed red). */
+@media (hover: hover) {
+    .folder-tool-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+    .folder-tool-btn.danger:hover { border-color: rgba(255, 80, 80, 0.6); background: rgba(255, 80, 80, 0.12); color: #ffb3b3; }
+}
 
 .saved-ranking-img.round { border-radius: 50%; }
 
@@ -2616,32 +2628,50 @@ button:disabled {
     white-space: nowrap;
 }
 
-.saved-ranking-actions {
-    display: flex;
-    gap: 6px;
+.saved-ranking-chevron {
     flex-shrink: 0;
+    font-size: 22px;
+    line-height: 1;
+    opacity: 0.45;
+    padding-left: 4px;
 }
 
-.icon-btn {
-    width: 36px;
-    height: 36px;
-    padding: 0;
+/* Folders and Delete on a saved ranking's own page (rank-view.js). */
+.rank-view-manage {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rank-view-manage button {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 7px;
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    padding: 7px 14px;
 }
 
-.icon-btn svg {
-    width: 17px;
-    height: 17px;
-    fill: rgba(255, 255, 255, 0.8);
+.rank-view-manage svg {
+    width: 15px;
+    height: 15px;
+    fill: currentColor;
 }
 
-.icon-btn:hover { background: rgba(255, 255, 255, 0.08); }
-.icon-btn.delete-btn:hover { border-color: rgba(255, 80, 80, 0.6); background: rgba(255, 80, 80, 0.12); }
+.rank-view-manage .danger {
+    color: #ff9b9b;
+    border-color: rgba(255, 80, 80, 0.35);
+}
+
+@media (hover: hover) {
+    .rank-view-manage button:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+    .rank-view-manage .danger:hover { border-color: rgba(255, 80, 80, 0.6); background: rgba(255, 80, 80, 0.12); color: #ffb3b3; }
+}
 
 /* Folder modals */
 .library-modal-card h2 { margin-bottom: 4px; }
@@ -2734,8 +2764,6 @@ button:disabled {
     .folder-chip { flex-shrink: 0; }
     .folder-chip-name { max-width: 160px; }
 
-    .saved-ranking { align-items: flex-start; }
-    .saved-ranking-actions { flex-direction: column; }
 
     .rank-head-rating .star-rating-stars .star {
         width: 32px !important;
