@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Source for the home-screen / app icons (apple-touch-icon, icon-192/512, maskable).
+       Full-bleed and opaque: iOS and Android round the corners themselves. -->
+  <defs>
+    <linearGradient id="mark" gradientUnits="userSpaceOnUse" x1="96" y1="0" x2="416" y2="0">
+      <stop offset="0" stop-color="#ff9ad8"/><stop offset="0.5" stop-color="#b98bff"/><stop offset="1" stop-color="#3ff08a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#000"/>
+  <rect x="96" y="171" width="80" height="170" rx="40" fill="url(#mark)"/>
+  <rect x="216" y="106" width="80" height="300" rx="40" fill="url(#mark)"/>
+  <rect x="336" y="146" width="80" height="220" rx="40" fill="url(#mark)"/>
+</svg>
