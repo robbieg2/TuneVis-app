@@ -86,10 +86,15 @@
 
   <div id="rankings-results" class="rankings-results-grid"></div>
 
-  <div class="general-rank-cta">
-    <p>No album or artist in mind?</p>
-    <a href="rank-general.html"><button type="button">Create your own personal music rankings</button></a>
-  </div>
+  <p class="custom-rank-link">No album or artist in mind? <a href="rank-general.html">Make a custom ranking&nbsp;&#8250;</a></p>
+
+  <section id="recommended-rankings" class="saved-rankings recommended-rankings" aria-labelledby="recommended-title" hidden>
+    <div class="saved-rankings-head">
+      <h2 class="saved-rankings-title" id="recommended-title">Recommended for you</h2>
+    </div>
+    <p class="recommended-sub">Rankings to make next, based on what you've already ranked.</p>
+    <div class="saved-grid" id="recommended-list"></div>
+  </section>
 
   <section id="saved-rankings" class="saved-rankings" hidden>
     <div class="saved-rankings-head">
@@ -126,6 +131,7 @@
 
   <script type="module" src="scripts/rankings.js"></script>
   <script type="module" src="scripts/rankings-library.js"></script>
+  <script type="module" src="scripts/recommended-rankings.js"></script>
   <script type="module" src="scripts/account-nav.js"></script>
 </body>
 </html>

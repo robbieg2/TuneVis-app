@@ -359,20 +359,23 @@ header.logo .logo-title {
     padding: 0 20px;
 }
 
-.general-rank-cta {
-    max-width: 480px;
-    margin: 8px auto 40px;
-    padding: 22px 24px;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px dashed rgba(255, 255, 255, 0.16);
-    border-radius: 14px;
+/* One quiet line under the search, in place of the old custom ranking box. */
+.custom-rank-link {
+    margin: 4px auto 18px;
+    padding: 0 16px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
 }
 
-.general-rank-cta p {
-    margin: 0 0 12px;
-    opacity: 0.8;
-    font-size: 14px;
+.custom-rank-link a {
+    color: #1db954;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+@media (hover: hover) {
+    .custom-rank-link a:hover { text-decoration: underline; }
 }
 
 .rank-result-group {
@@ -2204,7 +2207,6 @@ button:disabled {
 
     .rank-result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-    .general-rank-cta { margin: 8px 16px 32px; }
 
     .saved-rankings { padding: 0 16px; }
 
@@ -2892,6 +2894,45 @@ button:disabled {
 }
 
 .saved-rankings .show-more-btn { margin-top: 16px; }
+
+/* Recommended rankings (recommended-rankings.js): same cards as the saved grid. */
+.recommended-rankings { margin-bottom: 30px; }
+
+.recommended-sub {
+    margin: -6px 0 14px;
+    font-size: 13px;
+    opacity: 0.6;
+}
+
+.suggest-card-reason {
+    margin-top: 2px;
+    font-size: 12px;
+    color: #7ee2a3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+.suggest-card-loading .saved-card-cover {
+    animation: suggest-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.suggest-loading-line {
+    height: 11px;
+    width: 80%;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    animation: suggest-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.suggest-loading-line.short { width: 50%; }
+
+@keyframes suggest-pulse {
+    from { opacity: 0.45; }
+    to { opacity: 1; }
+}
 
 /* Top tracks / Albums & EPs under the Artists tab (like the artist ranking page). */
 .sub-tabs {

@@ -60,6 +60,14 @@ async function lookUp(albumIds, cache) {
     writeCache(cache);
 }
 
+// { albumId: [artistIds] } for these albums, looking up any not known yet.
+export async function albumArtists(albumIds) {
+    const cache = readCache();
+    const missing = [...new Set(albumIds)].filter(id => id && !cache[id]);
+    if (missing.length) await lookUp(missing, cache);
+    return cache;
+}
+
 // rankings: the user's saved rankings (any kinds). Resolves to a Map of
 // artistId → { average, count }, counting each album once (its newest rating).
 export async function artistAverages(rankings) {
