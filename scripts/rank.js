@@ -10,6 +10,7 @@ import { initSaveButton, KIND_LABELS, listRankings, rankingUrl } from "./saved-r
 import { createStarRating, parseRating, starsText, starsHtml, formatRating } from "./star-rating.js";
 import { setViewMode, renderRankView, setSavedRanking } from "./rank-view.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
+import { artistAverages, rememberAlbumArtists, formatAverage } from "./artist-ratings.js";
 
 const backBtn = document.getElementById("back-btn");
 const listNameInput = document.getElementById("list-name-input");
@@ -265,6 +266,7 @@ async function loadAlbum(token, id) {
         artists: (album.artists || []).filter(a => a.id).map(a => ({ id: a.id, name: a.name })),
         image: album.images?.[0]?.url || "",
     };
+    rememberAlbumArtists(id, meta.artists.map(a => a.id));   // for artists' average stars
 
     allTracks = (album.tracks?.items || []).map(t => ({
         id: t.id,
@@ -373,6 +375,7 @@ function renderHead() {
     document.getElementById("rank-play-btn")?.addEventListener("click", togglePlayer);
     const metaBox = headEl.querySelector(".rank-head-meta");
     if (meta.artists?.length) loadSavedAlbumRankings().then(updateArtistLinks);
+    if (meta.type === "artist") showArtistAverage(metaBox);
 
     if (meta.type !== "album") return;
     if (viewing) {
@@ -415,6 +418,25 @@ function updateArtistLinks() {
         const artist = meta.artists?.find(a => a.id === link.dataset.artistId);
         if (artist) link.href = artistHref(artist);
     });
+}
+
+// An artist's average stars across the user's rated albums of theirs, under the name.
+let artistAverage;   // undefined: not worked out yet; null: no rated albums
+async function showArtistAverage(metaBox) {
+    const artistId = meta.id;
+    if (artistAverage === undefined) {
+        await loadSavedAlbumRankings();
+        const averages = await artistAverages(savedRankingsList).catch(() => new Map());
+        if (meta?.id !== artistId) return;
+        artistAverage = averages.get(artistId) || null;
+    }
+    if (!artistAverage || !metaBox.isConnected || metaBox.querySelector(".rank-head-avg")) return;
+    const { average, count } = artistAverage;
+    const el = document.createElement("div");
+    el.className = "rank-head-avg";
+    el.innerHTML = `${starsHtml(average, { size: 18 })}<span class="rank-head-avg-value">${formatAverage(average)}</span>
+        <span class="rank-head-avg-note">average from ${count} rated album${count === 1 ? "" : "s"}</span>`;
+    metaBox.appendChild(el);
 }
 
 // Drawn icons rather than ▶ / ✕ characters: iPhones render ▶ as a coloured emoji.
@@ -1103,6 +1125,13 @@ window.addEventListener("pageshow", e => {
     if (e.persisted && viewing && meta && isAlbumsList()) {
         savedAlbumRankings = null;
         loadSavedAlbumRankings().then(() => { if (viewing && isAlbumsList()) renderView(); });
+    }
+    // Back from one of the artist's albums: its stars may have changed.
+    if (e.persisted && meta?.type === "artist") {
+        savedAlbumRankings = null;
+        artistAverage = undefined;
+        headEl.querySelector(".rank-head-avg")?.remove();
+        showArtistAverage(headEl.querySelector(".rank-head-meta"));
     }
     // Back from an artist's page, where their ranking may have just been saved.
     if (e.persisted && meta?.artists?.length) {
