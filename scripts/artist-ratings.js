@@ -6,11 +6,27 @@
 // It's filled whenever an album ranking page is opened, and any rated album not in it
 // yet is looked up from Spotify in batches of 20. Album credits don't change, so the
 // entries don't expire. Everything here is optional: on any failure the averages just
-// leave those albums out.
+// leave those albums out. The artists' names are kept alongside
+// (tunevis_artist_names: { artistId: name }) so the saved rankings search can find an
+// album by its artist.
 import { getSpotifyToken } from "./auth.js";
 
 const KEY = "tunevis_album_artists";
+const NAMES_KEY = "tunevis_artist_names";
 const MAX_ENTRIES = 2000;
+
+function readNames() {
+    try { return JSON.parse(localStorage.getItem(NAMES_KEY)) || {}; }
+    catch { return {}; }
+}
+
+function writeNames(names) {
+    try {
+        const ids = Object.keys(names);
+        if (ids.length > MAX_ENTRIES) ids.slice(0, ids.length - MAX_ENTRIES).forEach(id => delete names[id]);
+        localStorage.setItem(NAMES_KEY, JSON.stringify(names));
+    } catch {}
+}
 
 function readCache() {
     try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
@@ -25,12 +41,35 @@ function writeCache(cache) {
     } catch {}
 }
 
-// Called by the album ranking page, which already knows the album's artists.
-export function rememberAlbumArtists(albumId, artistIds) {
-    if (!albumId || !artistIds?.length) return;
+// Called by the album ranking page, which already knows the album's artists:
+// [{ id, name }] (or just ids).
+export function rememberAlbumArtists(albumId, artists) {
+    if (!albumId || !artists?.length) return;
     const cache = readCache();
-    cache[albumId] = artistIds;
+    cache[albumId] = artists.map(a => (typeof a === "string" ? a : a.id)).filter(Boolean);
     writeCache(cache);
+    const named = artists.filter(a => typeof a === "object" && a?.id && a.name);
+    if (named.length) {
+        const names = readNames();
+        named.forEach(a => { names[a.id] = a.name; });
+        writeNames(names);
+    }
+}
+
+// The names of an album's artists, from what's been remembered ([] if not known yet).
+export function albumArtistNames(albumId) {
+    const ids = readCache()[albumId] || [];
+    const names = readNames();
+    return ids.map(id => names[id]).filter(Boolean);
+}
+
+// Makes sure these albums' artists and their names are known (looking up any that
+// aren't), for searching albums by artist.
+export async function loadAlbumArtistNames(albumIds) {
+    const cache = readCache();
+    const names = readNames();
+    const missing = [...new Set(albumIds)].filter(id => id && (!cache[id] || cache[id].some(a => !names[a])));
+    if (missing.length) await lookUp(missing, cache);
 }
 
 async function spotifyGet(url) {
@@ -49,9 +88,13 @@ async function lookUp(albumIds, cache) {
         const batch = albumIds.slice(i, i + 20);
         try {
             const data = await spotifyGet(`https://api.spotify.com/v1/albums?ids=${batch.map(encodeURIComponent).join(",")}&market=GB`);
+            const names = readNames();
             for (const album of data.albums || []) {
-                if (album?.id) cache[album.id] = (album.artists || []).map(a => a.id).filter(Boolean);
+                if (!album?.id) continue;
+                cache[album.id] = (album.artists || []).map(a => a.id).filter(Boolean);
+                (album.artists || []).forEach(a => { if (a.id && a.name) names[a.id] = a.name; });
             }
+            writeNames(names);
         } catch (err) {
             console.warn("[ratings] Couldn't look up album artists:", err);
             break;

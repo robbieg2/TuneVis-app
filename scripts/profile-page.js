@@ -12,6 +12,7 @@ import { artistAverages } from "./artist-ratings.js";
 import { rankingCard, groupArtists } from "./ranking-cards.js";
 import { profileByUsername, loadFriends, relationTo, rankingsOf, publicFoldersOf } from "./social-data.js";
 import { avatarHtml, relationButtonsHtml, runRelationAction } from "./social-ui.js";
+import { loopCarousel } from "./loop-carousel.js";
 
 const headEl = document.getElementById("profile-head");
 const bodyEl = document.getElementById("profile-body");
@@ -117,7 +118,11 @@ function renderRankings() {
     bodyEl.innerHTML = `
         ${pinned.length || (self && pinsAvailable()) ? `<section class="profile-pinned">
             <h2 class="social-heading">Pinned favourites</h2>
-            ${pinned.length ? `<div class="saved-grid pinned-grid" id="pinned-grid"></div>`
+            ${pinned.length ? `<div class="carousel-wrapper suggest-carousel-wrapper">
+                <button type="button" class="scroll-btn" id="pinned-left" aria-label="Scroll left">&lt;</button>
+                <div class="carousel suggest-carousel pinned-carousel" id="pinned-grid"></div>
+                <button type="button" class="scroll-btn" id="pinned-right" aria-label="Scroll right">&gt;</button>
+            </div>`
                 : `<p class="tab-empty">Pin up to ${PIN_LIMIT} favourite albums or artists with the pin on their cards below, so your friends see them first.</p>`}
         </section>` : ""}
         <div class="type-tabs profile-tabs" role="group" aria-label="Kind of ranking">
@@ -136,8 +141,16 @@ function renderRankings() {
         ${shown.length ? `<div class="saved-grid" id="profile-grid"></div>` : `<p class="tab-empty">Nothing in this folder yet.</p>`}`;
     const grid = bodyEl.querySelector("#profile-grid");
     shown.forEach(r => grid?.appendChild(card(r, self)));
-    const pinnedGrid = bodyEl.querySelector("#pinned-grid");
-    pinned.forEach(r => pinnedGrid?.appendChild(card(r, self)));
+    // Pinned favourites: one horizontal row that loops round (loop-carousel.js).
+    const pinnedRow = bodyEl.querySelector("#pinned-grid");
+    if (pinnedRow) {
+        loopCarousel(pinnedRow, {
+            items: pinned,
+            build: e => card(e, self),
+            leftBtn: bodyEl.querySelector("#pinned-left"),
+            rightBtn: bodyEl.querySelector("#pinned-right"),
+        });
+    }
 }
 
 // Pinned albums / artists (and custom rankings), in the order they were pinned.

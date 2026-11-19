@@ -13,7 +13,7 @@ import {
     loadFolders, createFolder, updateFolder, deleteFolder, FOLDER_LIMIT,
 } from "./saved-rankings.js";
 import { openNameModal } from "./folder-dialog.js";
-import { artistAverages } from "./artist-ratings.js";
+import { artistAverages, albumArtistNames, loadAlbumArtistNames } from "./artist-ratings.js";
 import { rankingCard, isArtistKind, groupArtists } from "./ranking-cards.js";
 
 const section = document.getElementById("saved-rankings");
@@ -85,9 +85,18 @@ function sorted(list) {
 // Search: case- and accent-insensitive, over the ranking's name, what it ranks (album /
 // artist), its kind and its folders. Every word typed has to match somewhere.
 const searchable = text => String(text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+// Albums also match their artist's name ("arctic" finds every Arctic Monkeys album):
+// from the remembered album credits (artist-ratings.js), or, until those are known, the
+// artists on the ranked tracks.
+function artistWords(r) {
+    if (r.kind !== "album") return [];
+    const names = albumArtistNames(r.source_id);
+    return names.length ? names : (r.items || []).map(i => i.subtitle).filter(Boolean);
+}
+
 function matchesQuery(r) {
     if (!query) return true;
-    const haystack = searchable([r.title, r.source_name, KIND_LABELS[r.kind], ...foldersOf(r).map(f => f.name)].join(" "));
+    const haystack = searchable([r.title, r.source_name, KIND_LABELS[r.kind], ...artistWords(r), ...foldersOf(r).map(f => f.name)].join(" "));
     return query.split(/\s+/).every(word => haystack.includes(word));
 }
 const matching = () => (query ? rankings.filter(matchesQuery) : rankings);
@@ -359,6 +368,14 @@ async function load(user) {
     // Linked from the account page as rankings.html#saved-rankings; the section only
     // appears once loaded, so scroll to it now.
     if (window.location.hash === "#saved-rankings") section.scrollIntoView({ behavior: "smooth" });
+
+    // Albums' artists (for searching by artist) may need a Spotify lookup too.
+    const albumIds = rankings.filter(r => r.kind === "album" && r.source_id).map(r => r.source_id);
+    if (albumIds.length) {
+        loadAlbumArtistNames(albumIds)
+            .then(() => { if (id === loadId && query) { renderTypeTabs(); renderFolderBar(); renderList(); } })
+            .catch(err => console.warn(err));
+    }
 
     // Artists' average stars may need a Spotify lookup, so they fill in afterwards.
     if (rankings.some(isArtistKind)) {

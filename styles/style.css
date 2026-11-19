@@ -4353,6 +4353,15 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 .profile-pinned .social-heading { margin-top: 0; }
 
 .pin-wrap { position: relative; min-width: 0; }
+
+/* The pinned row is a looping carousel (same card sizes as Recommended for you). */
+.pinned-carousel > .pin-wrap,
+.pinned-carousel > .saved-card { flex: 0 0 150px; width: 150px; }
+
+@media (max-width: 768px) {
+    .pinned-carousel > .pin-wrap,
+    .pinned-carousel > .saved-card { flex-basis: 38vw; width: 38vw; max-width: 170px; }
+}
 .pin-wrap > .saved-card { height: 100%; }
 
 .pin-btn {

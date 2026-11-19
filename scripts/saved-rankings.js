@@ -25,7 +25,7 @@ async function selectRankings(build) {
 }
 
 // Pins a ranking to (or unpins it from) its owner's profile.
-export const PIN_LIMIT = 8;
+export const PIN_LIMIT = 5;
 export async function setPinned(id, pinned) {
     const supabase = await getSupabase();
     const { error } = await supabase.from("rankings").update({ pinned_at: pinned ? new Date().toISOString() : null }).eq("id", id);

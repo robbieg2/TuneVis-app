@@ -269,7 +269,7 @@ async function loadAlbum(token, id) {
         artists: (album.artists || []).filter(a => a.id).map(a => ({ id: a.id, name: a.name })),
         image: album.images?.[0]?.url || "",
     };
-    rememberAlbumArtists(id, meta.artists.map(a => a.id));   // for artists' average stars
+    rememberAlbumArtists(id, meta.artists);   // for artists' average stars
 
     allTracks = (album.tracks?.items || []).map(t => ({
         id: t.id,
