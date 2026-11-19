@@ -8,5 +8,5 @@
 // While either is empty, accounts are switched off: the header shows no account
 // button and the sign-in pages say sign-in isn't available. The rest of the site
 // works as before.
-export const SUPABASE_URL = "http://localhost:5174";
-export const SUPABASE_ANON_KEY = "mock-anon-key";
+export const SUPABASE_URL = "https://mubymbhagbtsvqosehnl.supabase.co";
+export const SUPABASE_ANON_KEY = "sb_publishable_DcGqd1vLhN70WNqz2G9JMA_mZ1cu25Y";
