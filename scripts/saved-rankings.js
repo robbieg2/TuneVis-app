@@ -8,17 +8,28 @@ import { accountsConfigured, getSupabase, getUser, loginUrl } from "./supabase.j
 
 const BASE_COLUMNS = "id, user_id, kind, source_id, source_name, genre, title, size, item_ids, items, image, updated_at";
 const COLUMNS = `${BASE_COLUMNS}, rating`;
+const PINNED_COLUMNS = `${COLUMNS}, pinned_at`;
 
 // Postgres "column does not exist" / PostgREST "column not found": the ratings
 // migration hasn't been run on this database yet.
 const isMissingColumn = error => error?.code === "42703" || error?.code === "PGRST204";
 
-// Selects rankings, falling back to the columns that exist before the ratings migration.
+// Selects rankings, falling back to the columns that exist before the pinned and
+// ratings migrations.
 async function selectRankings(build) {
     const supabase = await getSupabase();
-    let result = await build(supabase.from("rankings").select(COLUMNS));
+    let result = await build(supabase.from("rankings").select(PINNED_COLUMNS));
+    if (isMissingColumn(result.error)) result = await build(supabase.from("rankings").select(COLUMNS));
     if (isMissingColumn(result.error)) result = await build(supabase.from("rankings").select(BASE_COLUMNS));
     return result;
+}
+
+// Pins a ranking to (or unpins it from) its owner's profile.
+export const PIN_LIMIT = 8;
+export async function setPinned(id, pinned) {
+    const supabase = await getSupabase();
+    const { error } = await supabase.from("rankings").update({ pinned_at: pinned ? new Date().toISOString() : null }).eq("id", id);
+    if (error) throw error;
 }
 
 // The fields that make up a ranking, in a fixed order, so two can be compared as JSON.
@@ -39,9 +50,11 @@ export const KIND_LABELS = {
 
 // The saved rankings page has a tab per section, and each section has its own folders
 // (public.ranking_section() in supabase/schema.sql maps kinds the same way).
+// An artist's top tracks and albums & EPs rankings share the "artist" section: one card
+// on the Artists tab, one set of folders (the one-section-per-artist migration).
 export const SECTION_OF_KIND = {
     album: "album",
-    artist_albums: "artist_albums",
+    artist_albums: "artist",
     artist: "artist",
     fav_artists: "favourites",
     fav_tracks: "favourites",
@@ -246,8 +259,10 @@ export async function loadFolders() {
 }
 
 // The folders a ranking of this section can go in (all of them before the migration).
+// ("artist_albums" folders only exist before the one-section-per-artist migration.)
 export const foldersForSection = (folders, section) =>
-    folders.filter(f => f.section == null || f.section === section);
+    folders.filter(f => f.section == null || f.section === section
+        || (section === "artist" && f.section === "artist_albums"));
 
 export function folderNameProblem(name, existing = [], ignoreId = null) {
     const value = String(name ?? "").trim();

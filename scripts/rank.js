@@ -8,7 +8,7 @@ import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 import { initSaveButton, KIND_LABELS, listRankings, rankingUrl } from "./saved-rankings.js";
 import { createStarRating, parseRating, starsText, starsHtml, formatRating } from "./star-rating.js";
-import { setViewMode, renderRankView, setSavedRanking, setFriendRanking } from "./rank-view.js";
+import { setViewMode, renderRankView, setSavedRanking, setFriendRanking, showArtistLists } from "./rank-view.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
 import { artistAverages, rememberAlbumArtists, formatAverage } from "./artist-ratings.js";
 
@@ -681,6 +681,8 @@ function syncSavedRanking() {
 
 function renderView() {
     syncSavedRanking();
+    // An artist's finished list can switch to their other list (Top tracks / Albums & EPs).
+    if (meta.type === "artist") showArtistLists({ artistId: meta.id, current: isAlbumsList() ? "albums" : "tracks", friendRankingId: friendId });
     const items = viewItems();
     const label = KIND_LABELS[kind()] || "Ranking";
     const noun = isAlbumsList() ? "albums & EPs" : "tracks";

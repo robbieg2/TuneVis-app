@@ -1,7 +1,7 @@
 // rankings-library.js — "Your saved rankings" on rankings.html: the signed-in user's
-// saved rankings as a grid of covers, in tabs: Albums, Artists (with Top tracks /
-// Albums & EPs sub-tabs, like the artist ranking page) and Custom. Each section
-// (sectionOf in saved-rankings.js: album, artist, artist_albums, favourites) has its own
+// saved rankings as a grid of covers, in tabs: Albums, Artists (one card per artist,
+// covering their top tracks and albums & EPs rankings) and Custom. Each section
+// (sectionOf in saved-rankings.js: album, artist, favourites) has its own
 // folders ("Favourites", "2026 Releases"). Albums show their stars; artists show their
 // average stars across the user's rated albums of theirs (artist-ratings.js).
 // Adding a ranking to folders and deleting it happen on the ranking's own page
@@ -14,7 +14,7 @@ import {
 } from "./saved-rankings.js";
 import { openNameModal } from "./folder-dialog.js";
 import { artistAverages } from "./artist-ratings.js";
-import { rankingCard, isArtistKind } from "./ranking-cards.js";
+import { rankingCard, isArtistKind, groupArtists } from "./ranking-cards.js";
 
 const section = document.getElementById("saved-rankings");
 const listEl = document.getElementById("saved-rankings-list");
@@ -22,7 +22,6 @@ const barEl = document.getElementById("folder-bar");
 const toolsEl = document.getElementById("folder-tools");
 const sortEl = document.getElementById("sort-toggle");
 const typeTabsEl = document.getElementById("type-tabs");
-const subTabsEl = document.getElementById("sub-tabs");
 const searchEl = document.getElementById("saved-search-input");
 const SORT_KEY = "tunevis_saved_sort";
 
@@ -30,16 +29,11 @@ const SORT_KEY = "tunevis_saved_sort";
 // Custom (favourite artists / tracks from rank-general.html) once one is saved.
 const TABS = [
     { id: "album", label: "Albums", sections: ["album"], always: true },
-    { id: "artists", label: "Artists", sections: ["artist", "artist_albums"], always: true },
+    { id: "artists", label: "Artists", sections: ["artist"], always: true },
     { id: "custom", label: "Custom", sections: ["favourites"] },
 ];
-// The Artists tab's sub-tabs, in the same order as the artist ranking page's toggle.
-const SUB_TABS = [
-    { id: "artist", label: "Top tracks" },
-    { id: "artist_albums", label: "Albums & EPs" },
-];
 // For messages: "No album rankings saved yet."
-const NOUNS = { album: "album", artist: "artist top tracks", artist_albums: "artist album", favourites: "custom" };
+const NOUNS = { album: "album", artist: "artist", favourites: "custom" };
 
 // ── State ──────────────────────────────────────────────────────────────
 let rankings = [];
@@ -67,7 +61,7 @@ function readSortPreference() {
 // The stars a card shows: an album's own rating, or an artist's average.
 function ratingOf(r) {
     if (r.kind === "album") return r.rating != null ? Number(r.rating) : null;
-    if (isArtistKind(r)) return averages.get(r.source_id)?.average ?? null;
+    if (r.group || isArtistKind(r)) return averages.get(r.source_id)?.average ?? null;
     return null;
 }
 const newestFirst = (a, b) => String(b.updated_at).localeCompare(String(a.updated_at));
@@ -101,9 +95,12 @@ const matching = () => (query ? rankings.filter(matchesQuery) : rankings);
 const tabOf = sectionId => TABS.find(t => t.sections.includes(sectionId)) || TABS[0];
 const inSection = (list, sectionId) => list.filter(r => sectionOf(r.kind) === sectionId);
 const inTabSections = (list, tab) => list.filter(r => tab.sections.includes(sectionOf(r.kind)));
-const inTab = () => inSection(matching(), typeFilter);
+// The cards in the open tab: each artist's rankings make one card (groupArtists).
+const inTab = () => groupArtists(inSection(matching(), typeFilter));
+const entryIds = e => (e.group ? e.rankings.map(r => r.id) : [e.id]);
 const tabFolders = () => foldersForSection(folders, typeFilter);
-const inFolder = (folderId, list) => list.filter(r => items.some(i => i.folder_id === folderId && i.ranking_id === r.id));
+// An artist's card is in a folder when either of their rankings is.
+const inFolder = (folderId, list) => list.filter(e => entryIds(e).some(id => items.some(i => i.folder_id === folderId && i.ranking_id === id)));
 const activeFolder = () => tabFolders().find(f => f.id === active) || null;
 const foldersOf = r => foldersForSection(folders, sectionOf(r.kind))
     .filter(f => items.some(i => i.folder_id === f.id && i.ranking_id === r.id));
@@ -137,7 +134,6 @@ function openSection(sectionId) {
 function render() {
     if (active !== "all" && !activeFolder()) active = "all";   // e.g. deleted elsewhere
     renderTypeTabs();
-    renderSubTabs();
     renderFolderBar();
     renderSortToggle();
     renderList();
@@ -150,7 +146,7 @@ function renderTypeTabs() {
     typeTabsEl.hidden = false;
     typeTabsEl.innerHTML = shown.map(t => `
         <button type="button" class="type-tab${t === open ? " active" : ""}" data-tab="${t.id}" aria-pressed="${t === open}">
-            ${esc(t.label)}<span class="type-tab-count">${inTabSections(matching(), t).length}</span>
+            ${esc(t.label)}<span class="type-tab-count">${groupArtists(inTabSections(matching(), t)).length}</span>
         </button>`).join("");
 }
 
@@ -158,22 +154,6 @@ typeTabsEl.addEventListener("click", e => {
     const btn = e.target.closest("button[data-tab]");
     const tab = btn && TABS.find(t => t.id === btn.dataset.tab);
     if (tab) openSection(sectionFor(tab));
-});
-
-// Top tracks / Albums & EPs under the Artists tab.
-function renderSubTabs() {
-    const show = tabOf(typeFilter).id === "artists";
-    subTabsEl.hidden = !show;
-    if (!show) { subTabsEl.innerHTML = ""; return; }
-    subTabsEl.innerHTML = SUB_TABS.map(s => `
-        <button type="button" class="tab-btn sub-tab${typeFilter === s.id ? " active" : ""}" data-section="${s.id}" aria-pressed="${typeFilter === s.id}">
-            ${esc(s.label)}<span class="sub-tab-count">${inSection(matching(), s.id).length}</span>
-        </button>`).join("");
-}
-
-subTabsEl.addEventListener("click", e => {
-    const btn = e.target.closest("button[data-section]");
-    if (btn) openSection(btn.dataset.section);
 });
 
 function renderSortToggle() {
@@ -271,15 +251,12 @@ searchEl?.addEventListener("input", () => {
     if (next === query) return;
     query = next;
     renderTypeTabs();
-    renderSubTabs();
     renderFolderBar();
     renderList();
 });
 
 // ── Folder bar and tools ──────────────────────────────────────────────
-const sectionLabel = () => tabOf(typeFilter).id === "artists"
-    ? `artist ${SUB_TABS.find(s => s.id === typeFilter).label.toLowerCase()}`
-    : tabOf(typeFilter).label.toLowerCase();
+const sectionLabel = () => tabOf(typeFilter).label.toLowerCase();
 
 barEl.addEventListener("click", e => {
     const btn = e.target.closest("button");
@@ -347,7 +324,7 @@ document.getElementById("folder-delete").addEventListener("click", async () => {
 });
 
 // ── Loading ────────────────────────────────────────────────────────────
-const SECTIONS = ["album", "artist", "artist_albums", "favourites"];
+const SECTIONS = ["album", "artist", "favourites"];
 
 async function load(user) {
     if (!section) return;
@@ -367,7 +344,7 @@ async function load(user) {
         const params = new URLSearchParams(window.location.search);
         const wantedType = params.get("type");
         typeFilter = SECTIONS.includes(wantedType) ? wantedType
-            : wantedType === "artists" ? sectionFor(TABS[1])
+            : wantedType === "artists" || wantedType === "artist_albums" ? "artist"   // old links
             // no tab asked for: open the first section that has rankings
             : TABS.map(sectionFor).find(s => rankings.some(r => sectionOf(r.kind) === s)) || "album";
         const wanted = params.get("folder");

@@ -4,10 +4,10 @@
 // switches back. Under a saved ranking the view also has Add to folder and Delete.
 import { esc } from "./auth.js";
 import { getUser } from "./supabase.js";
-import { deleteRanking, sectionOf } from "./saved-rankings.js";
+import { deleteRanking, sectionOf, listRankings, rankingUrl } from "./saved-rankings.js";
 import { openFoldersDialog, openModal } from "./folder-dialog.js";
 import { getMyUsername } from "./profile.js";
-import { myPostsOf, shareRanking, rankingOwner, CAPTION_MAX } from "./social-data.js";
+import { myPostsOf, shareRanking, rankingOwner, rankingsOf, CAPTION_MAX } from "./social-data.js";
 import { setupCompare } from "./rank-compare.js";
 
 const viewEl = document.getElementById("rank-view");
@@ -155,6 +155,51 @@ manageEl.querySelector(".rank-delete-btn").addEventListener("click", async e => 
         alert("That ranking couldn't be deleted just now. Please try again.");
     }
 });
+
+// ── An artist's two lists: Top tracks / Albums & EPs ─────────────────
+// On an artist's finished list, a switch moves between their top tracks ranking and
+// their albums & EPs ranking (the Artists tab shows one card per artist). Yours: the
+// other list opens your saved one, or a new one if you haven't made it. A friend's
+// (friendRankingId): their saved one, or a disabled "Not ranked" button.
+let listsCheck = 0;
+export async function showArtistLists({ artistId, current, friendRankingId = null }) {
+    const check = ++listsCheck;
+    let el = viewEl?.querySelector(".rank-view-lists");
+    if (!viewEl) return;
+    if (!el) {
+        el = document.createElement("div");
+        el.className = "rank-view-lists rank-mode-toggle";
+        el.setAttribute("role", "group");
+        el.setAttribute("aria-label", "Which list");
+        titleEl.before(el);
+    }
+    const draw = links => {
+        el.innerHTML = [["tracks", "Top tracks"], ["albums", "Albums & EPs"]].map(([id, label]) => {
+            if (id === current) return `<span class="tab-btn active" aria-current="page">${label}</span>`;
+            const href = links[id];
+            return href ? `<a class="tab-btn" href="${esc(href)}">${label}</a>`
+                : `<span class="tab-btn disabled" title="Not ranked yet">${label}<small> · not ranked</small></span>`;
+        }).join("");
+    };
+    draw({});   // straight away, then with links once the rankings are known
+    let rankings = [];
+    try {
+        if (friendRankingId) {
+            const owner = await rankingOwner(friendRankingId);
+            rankings = owner ? await rankingsOf(owner.ranking.user_id) : [];
+        } else {
+            rankings = (await listRankings()) || [];
+        }
+    } catch (err) { console.warn(err); }
+    if (check !== listsCheck) return;
+    const newest = kind => rankings.find(r => r.kind === kind && r.source_id === artistId);
+    const link = (kind, list) => {
+        const r = newest(kind);
+        if (r) return rankingUrl(r, { friend: Boolean(friendRankingId) });
+        return friendRankingId ? null : `rank.html?type=artist&id=${encodeURIComponent(artistId)}${list === "albums" ? "&list=albums" : ""}`;
+    };
+    draw({ tracks: link("artist", "tracks"), albums: link("artist_albums", "albums") });
+}
 
 // Shows the view (true) or the workspace (false).
 export function setViewMode(viewing) {

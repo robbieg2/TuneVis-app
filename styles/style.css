@@ -4331,3 +4331,64 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
     .rank-view-actions:has(.rank-compare-btn) { flex-wrap: wrap; }
     .rank-view-actions .rank-compare-btn { flex: 1 0 100%; }
 }
+
+/* An artist's finished list: Top tracks / Albums & EPs switch (rank-view.js). */
+.rank-view-lists { margin: 0 0 14px; }
+
+.rank-view-lists .tab-btn {
+    display: inline-block;
+    text-decoration: none;
+    color: #fff;
+}
+
+.rank-view-lists .tab-btn.disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.rank-view-lists .tab-btn small { font-size: 11px; opacity: 0.8; }
+
+/* Pinned favourites on profiles (profile-page.js). */
+.profile-pinned { margin-bottom: 22px; }
+.profile-pinned .social-heading { margin-top: 0; }
+
+.pin-wrap { position: relative; min-width: 0; }
+.pin-wrap > .saved-card { height: 100%; }
+
+.pin-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    backdrop-filter: blur(4px);
+}
+
+.pin-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+}
+
+.pin-btn.on {
+    background: #ffc94d;
+    border-color: #ffc94d;
+    color: #1a1a1a;
+}
+
+.pin-btn.on svg { fill: currentColor; }
+
+@media (hover: hover) {
+    .pin-btn:not(.on):hover { background: rgba(0, 0, 0, 0.75); border-color: #ffc94d; }
+}

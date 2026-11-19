@@ -22,10 +22,10 @@ async function client() {
 // Rankings, falling back to the columns that exist before the ratings migration.
 async function selectRankings(build) {
     const { supabase } = await client();
-    let result = await build(supabase.from("rankings").select(RANKING_COLUMNS));
-    if (result.error?.code === "42703" || result.error?.code === "PGRST204") {
-        result = await build(supabase.from("rankings").select(RANKING_COLUMNS.replace(", rating", "")));
-    }
+    const missing = r => r.error?.code === "42703" || r.error?.code === "PGRST204";
+    let result = await build(supabase.from("rankings").select(`${RANKING_COLUMNS}, pinned_at`));
+    if (missing(result)) result = await build(supabase.from("rankings").select(RANKING_COLUMNS));
+    if (missing(result)) result = await build(supabase.from("rankings").select(RANKING_COLUMNS.replace(", rating", "")));
     return result;
 }
 

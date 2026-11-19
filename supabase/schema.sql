@@ -493,3 +493,64 @@ create policy "Friends see what's in public folders"
     select 1 from public.ranking_folders f
     where f.id = folder_id and f.is_public and f.user_id <> (select auth.uid())
   ));
+
+
+-- ===========================================================================
+-- Migration (Nov 2026): one folder section per artist, and pinned favourites
+-- On an existing database, run just this block (from here to the end of the file)
+-- in the SQL Editor. Needs the folders-by-kind, social and public-folders blocks.
+-- ===========================================================================
+
+-- An artist's top tracks and albums & EPs rankings now sit together under one card
+-- (the Artists tab), so they share folders: artist_albums rankings belong to the
+-- 'artist' section.
+create or replace function public.ranking_section(kind text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case kind
+    when 'album'         then 'album'
+    when 'artist_albums' then 'artist'
+    when 'artist'        then 'artist'
+    else 'favourites'    -- fav_artists, fav_tracks
+  end;
+$$;
+
+-- Existing 'artist_albums' folders move to 'artist'. Where the user already has an
+-- 'artist' folder of the same name, the two are merged (rankings from both; shown on
+-- the profile if either was).
+do $$
+declare
+  f record;
+  target uuid;
+begin
+  for f in select * from public.ranking_folders where section = 'artist_albums' loop
+    select id into target from public.ranking_folders
+    where user_id = f.user_id and section = 'artist'
+      and lower(btrim(name)) = lower(btrim(f.name));
+    if target is null then
+      update public.ranking_folders set section = 'artist' where id = f.id;
+    else
+      insert into public.ranking_folder_items (folder_id, ranking_id, user_id, added_at)
+      select target, i.ranking_id, i.user_id, i.added_at
+      from public.ranking_folder_items i where i.folder_id = f.id
+      on conflict (folder_id, ranking_id) do nothing;
+      update public.ranking_folders set is_public = is_public or f.is_public where id = target;
+      delete from public.ranking_folders where id = f.id;
+    end if;
+  end loop;
+end $$;
+
+-- Pinned favourites: a ranking pinned to its owner's profile (when it was pinned, so
+-- pins keep their order). Friends can see it, like the rest of the ranking.
+alter table public.rankings add column pinned_at timestamptz;
+
+-- Pinning isn't a change to the ranking, so it mustn't move it up "Most recent": the
+-- updated_at trigger now only fires when the ranking itself changes.
+drop trigger rankings_touch_updated_at on public.rankings;
+create trigger rankings_touch_updated_at
+  before update of kind, source_id, source_name, genre, title, size, item_ids, items, image, rating
+  on public.rankings
+  for each row execute function public.touch_updated_at();
