@@ -2,6 +2,7 @@
 import { getSpotifyToken, saveToRecent, getRecent, syncRecent, esc } from "./auth.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
 import { getUser } from "./supabase.js";
+import { loopCarousel } from "./loop-carousel.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const TRENDING_CACHE_KEY = "tunevis_trending_cache";
@@ -43,7 +44,7 @@ function buildTrackCard(track) {
     ${image ? `<img src="${esc(image)}" width="120" height="120" style="border-radius:10px;"><br/>` : ""}
     <strong>${esc(name)}</strong><br/>
     <em>${esc(artists)}</em><br/><br/>
-    <iframe src="https://open.spotify.com/embed/track/${esc(id)}"
+    <iframe src="https://open.spotify.com/embed/track/${esc(id)}" loading="lazy"
       width="300" height="80" frameborder="0"
       allowtransparency="true" allow="encrypted-media">
     </iframe>
@@ -95,18 +96,14 @@ async function searchTracks(query) {
 }
 
 function displaySearchResults(tracks) {
-  resultsDiv.innerHTML = "";
-  if (!tracks?.length) {
-    resultsDiv.innerHTML = "<p>No results found.</p>";
-    searchWrapper.style.display = "flex";
-    return;
-  }
-  tracks.forEach(t => resultsDiv.appendChild(buildTrackCard(t)));
   searchWrapper.style.display = "flex";
-  updateCarouselButtons(resultsDiv,
-    document.getElementById("scroll-left"),
-    document.getElementById("scroll-right")
-  );
+  loopCarousel(resultsDiv, {
+    items: tracks || [],
+    build: buildTrackCard,
+    leftBtn: document.getElementById("scroll-left"),
+    rightBtn: document.getElementById("scroll-right"),
+  });
+  if (!tracks?.length) resultsDiv.innerHTML = "<p>No results found.</p>";
 }
 
 // ── Trending ─────────────────────────────────────────────────────────────────
@@ -175,7 +172,7 @@ async function loadTrending(genre = "all") {
   const carousel  = document.getElementById("trending-results");
   const requestId = ++trendingRequestId;
 
-  carousel.innerHTML = "";
+  loopCarousel(carousel, { items: [], build: buildTrackCard });
   wrapper.style.display = "none";
   if (loadingEl) { loadingEl.textContent = "Loading trending tracks…"; loadingEl.style.display = "block"; }
 
@@ -190,13 +187,13 @@ async function loadTrending(genre = "all") {
       return;
     }
 
-    tracks.forEach(t => carousel.appendChild(buildTrackCard(t)));
-    wrapper.style.display = "flex";
-
-    updateCarouselButtons(carousel,
-      document.getElementById("trend-scroll-left"),
-      document.getElementById("trend-scroll-right")
-    );
+    wrapper.style.display = "flex";   // shown first, so the row can measure itself
+    loopCarousel(carousel, {
+      items: tracks,
+      build: buildTrackCard,
+      leftBtn: document.getElementById("trend-scroll-left"),
+      rightBtn: document.getElementById("trend-scroll-right"),
+    });
   } catch (err) {
     if (requestId !== trendingRequestId) return;
     console.error("Trending load error:", err);
@@ -240,22 +237,21 @@ function renderRecent(tracks) {
   const wrapper  = document.getElementById("recent-carousel-wrapper");
   const carousel = document.getElementById("recent-results");
 
-  carousel.innerHTML = "";
-
   if (!tracks.length) {
+    loopCarousel(carousel, { items: [], build: buildTrackCard });
     if (emptyEl)  emptyEl.style.display  = "block";
     if (wrapper)  wrapper.style.display  = "none";
     return;
   }
 
   if (emptyEl) emptyEl.style.display = "none";
-  tracks.forEach(t => carousel.appendChild(buildTrackCard(t)));
   wrapper.style.display = "flex";
-
-  updateCarouselButtons(carousel,
-    document.getElementById("recent-scroll-left"),
-    document.getElementById("recent-scroll-right")
-  );
+  loopCarousel(carousel, {
+    items: tracks,
+    build: buildTrackCard,
+    leftBtn: document.getElementById("recent-scroll-left"),
+    rightBtn: document.getElementById("recent-scroll-right"),
+  });
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
@@ -281,36 +277,6 @@ function initTabs() {
   // ?tab=recent opens Recently Viewed, e.g. coming back from logging in via its prompt.
   if (new URLSearchParams(window.location.search).get("tab") === "recent") {
     document.querySelector('.tab-btn[data-tab="recent"]')?.click();
-  }
-}
-
-// ── Carousel helpers ─────────────────────────────────────────────────────────
-
-function updateCarouselButtons(carousel, leftBtn, rightBtn) {
-  if (!leftBtn || !rightBtn) return;
-  const update = () => {
-    leftBtn.style.display  = carousel.scrollLeft <= 0 ? "none" : "block";
-    rightBtn.style.display = carousel.clientWidth >= carousel.scrollWidth - 1 ? "none" : "block";
-  };
-  update();
-
-  // This runs every time a carousel re-renders (every search keystroke,
-  // every Recently Viewed tab click) but the button/carousel elements are
-  // persistent nodes — only wire listeners once per node or they'd stack.
-  if (!carousel.dataset.scrollWired) {
-    carousel.dataset.scrollWired = "1";
-    carousel.addEventListener("scroll", update);
-    window.addEventListener("resize", update);
-  }
-
-  if (!leftBtn.dataset.clickWired) {
-    leftBtn.dataset.clickWired = "1";
-    leftBtn.addEventListener("click",  () => carousel.scrollBy({ left: -320, behavior: "smooth" }));
-  }
-
-  if (!rightBtn.dataset.clickWired) {
-    rightBtn.dataset.clickWired = "1";
-    rightBtn.addEventListener("click", () => carousel.scrollBy({ left:  320, behavior: "smooth" }));
   }
 }
 

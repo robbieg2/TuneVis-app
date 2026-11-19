@@ -88,16 +88,20 @@
     <button id="rankings-search-btn">Search</button>
   </div>
 
-  <div id="rankings-results" class="rankings-results-grid"></div>
-
   <p class="custom-rank-link">No album or artist in mind? <a href="rank-general.html">Make a custom ranking&nbsp;&#8250;</a></p>
+
+  <div id="rankings-results" class="rankings-results-grid"></div>
 
   <section id="recommended-rankings" class="saved-rankings recommended-rankings" aria-labelledby="recommended-title" hidden>
     <div class="saved-rankings-head">
       <h2 class="saved-rankings-title" id="recommended-title">Recommended for you</h2>
     </div>
     <p class="recommended-sub">Rankings to make next, based on what you've already ranked.</p>
-    <div class="saved-grid" id="recommended-list"></div>
+    <div class="carousel-wrapper suggest-carousel-wrapper">
+      <button type="button" class="scroll-btn" id="recommended-left" aria-label="Scroll left">&lt;</button>
+      <div class="carousel suggest-carousel" id="recommended-list"></div>
+      <button type="button" class="scroll-btn" id="recommended-right" aria-label="Scroll right">&gt;</button>
+    </div>
   </section>
 
   <section id="saved-rankings" class="saved-rankings" hidden>

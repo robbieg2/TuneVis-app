@@ -13,6 +13,7 @@ import { esc, getSpotifyToken } from "./auth.js";
 import { onUserChange } from "./supabase.js";
 import { listRankings } from "./saved-rankings.js";
 import { albumArtists, artistAverages } from "./artist-ratings.js";
+import { loopCarousel } from "./loop-carousel.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const CACHE_KEY = "tunevis_recs_cache";
@@ -235,6 +236,7 @@ function cardHtml(c) {
 
 function showLoading() {
     section.hidden = false;
+    loopCarousel(gridEl, { items: [], build: cardElement });   // no looping while loading
     gridEl.innerHTML = Array.from({ length: 4 }, () => `
         <span class="saved-card suggest-card-loading" aria-hidden="true">
             <span class="saved-card-cover"></span>
@@ -275,33 +277,25 @@ async function load(user) {
     gridEl.removeAttribute("aria-busy");
     section.hidden = !cards.length;
     shownCards = cards;
-    expanded = false;
     renderCards();
 }
 
-// The first COLLAPSED_COUNT (a row on desktop, two on phones), then "Show all N".
-const COLLAPSED_COUNT = 4;
-const CHEVRON = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6"/></svg>`;
+// All the suggestions in one row that scrolls round and round (loop-carousel.js).
 let shownCards = [];
-let expanded = false;
+
+function cardElement(c) {
+    const holder = document.createElement("div");
+    holder.innerHTML = cardHtml(c).trim();
+    return holder.firstElementChild;
+}
 
 function renderCards() {
-    const collapsible = shownCards.length > COLLAPSED_COUNT;
-    const visible = collapsible && !expanded ? shownCards.slice(0, COLLAPSED_COUNT) : shownCards;
-    gridEl.innerHTML = visible.map(cardHtml).join("");
-    section.querySelector(".show-more-btn")?.remove();
-    if (!collapsible) return;
-    const more = document.createElement("button");
-    more.type = "button";
-    more.className = "show-more-btn" + (expanded ? " expanded" : "");
-    more.setAttribute("aria-expanded", String(expanded));
-    more.innerHTML = expanded ? `Show less ${CHEVRON}` : `Show all ${shownCards.length} ${CHEVRON}`;
-    more.addEventListener("click", () => {
-        expanded = !expanded;
-        renderCards();
-        if (!expanded) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    loopCarousel(gridEl, {
+        items: shownCards,
+        build: cardElement,
+        leftBtn: document.getElementById("recommended-left"),
+        rightBtn: document.getElementById("recommended-right"),
     });
-    section.appendChild(more);
 }
 
 let currentUser = null;

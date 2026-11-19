@@ -2895,8 +2895,28 @@ button:disabled {
 
 .saved-rankings .show-more-btn { margin-top: 16px; }
 
-/* Recommended rankings (recommended-rankings.js): same cards as the saved grid. */
+/* Recommended rankings (recommended-rankings.js): the saved grid's cards in one row
+   that loops (loop-carousel.js). */
 .recommended-rankings { margin-bottom: 30px; }
+
+.suggest-carousel-wrapper {
+    width: 100%;
+    margin: 0;
+}
+
+.suggest-carousel {
+    flex: 1;
+    min-width: 0;
+    gap: 16px;
+    padding: 6px 4px 10px;
+}
+
+.suggest-carousel > .saved-card {
+    flex: 0 0 150px;
+    width: 150px;
+}
+
+.suggest-carousel-wrapper .scroll-btn { flex-shrink: 0; }
 
 .recommended-sub {
     margin: -6px 0 14px;
@@ -4065,4 +4085,18 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 @media (max-width: 360px) {
     .section-nav-link { padding: 8px 7px; font-size: 13px; gap: 4px; }
     .section-nav-link svg { width: 12px; height: 12px; }
+}
+
+/* Recommended rankings row on phones: swipe, about two and a half cards showing. */
+@media (max-width: 768px) {
+	.suggest-carousel {
+		padding: 6px 0 12px;
+		scroll-padding: 0;
+		gap: 12px;
+	}
+	.suggest-carousel > .saved-card {
+		flex-basis: 38vw;
+		width: 38vw;
+		max-width: 170px;
+	}
 }

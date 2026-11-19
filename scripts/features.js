@@ -19,6 +19,7 @@ import {
 
 import { getSpotifyToken, saveToRecent, esc } from "./auth.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
+import { loopCarousel } from "./loop-carousel.js";
 
 const trackInfo = document.getElementById("track-info");
 const backBtn = document.getElementById("back-btn");
@@ -272,7 +273,9 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 	const carousel = document.getElementById("recs-carousel");
 	if (!carousel) return;
 
-    rows.forEach((r) => {
+    // Built through a function so the looping row (loop-carousel.js) can make working
+	// copies of the cards at either end.
+	const buildRecCard = (r) => {
 		const id = r.id;
 		
         const card = document.createElement("div");
@@ -284,6 +287,7 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 			${scorePct != null ? `<div class="score-badge">${scorePct}% match</div>` : ""}
 			<iframe
 				src="https://open.spotify.com/embed/track/${esc(id)}"
+				loading="lazy"
 				width="100%"
 				height="153"
 				frameborder="0"
@@ -309,8 +313,8 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 			window.dispatchEvent(new CustomEvent("rec-hover", { detail: { trackId: null } }));
 		});	
 		
-		carousel.appendChild(card);
-	});
+		return card;
+	};
 	
 	const shuffleBtn = document.getElementById("shuffle-recs");
 	if (shuffleBtn) {
@@ -321,21 +325,12 @@ function renderRecommendations(items = [], { subtitle } = {}) {
 		};
 	}
         
-	const leftBtn = document.getElementById("recs-scroll-left");
-	const rightBtn = document.getElementById("recs-scroll-right");
-	
-	const scrollByAmount = () => Math.max(260, Math.floor(carousel.clientWidth * 0.85));
-	
-	if (leftBtn) {
-		leftBtn.addEventListener("click", () => {
-			carousel.scrollBy({ left: -scrollByAmount(), behavior: "smooth" });
-		});
-	}
-	if (rightBtn) {
-		rightBtn.addEventListener("click", () => {
-			carousel.scrollBy({ left: scrollByAmount(), behavior: "smooth" });
-		});
-	}
+	loopCarousel(carousel, {
+		items: rows,
+		build: buildRecCard,
+		leftBtn: document.getElementById("recs-scroll-left"),
+		rightBtn: document.getElementById("recs-scroll-right"),
+	});
 }
 
 // Functions to clean/aid API data
