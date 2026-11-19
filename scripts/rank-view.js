@@ -8,6 +8,7 @@ import { deleteRanking, sectionOf } from "./saved-rankings.js";
 import { openFoldersDialog, openModal } from "./folder-dialog.js";
 import { getMyUsername } from "./profile.js";
 import { myPostsOf, shareRanking, rankingOwner, CAPTION_MAX } from "./social-data.js";
+import { setupCompare } from "./rank-compare.js";
 
 const viewEl = document.getElementById("rank-view");
 const editEl = document.getElementById("rank-edit");
@@ -129,6 +130,8 @@ export async function setFriendRanking(rankingId, freshHref) {
     if (check !== friendCheck) return;
     if (owner?.username) {
         byline.innerHTML = `Ranked by <a href="profile.html?u=${encodeURIComponent(owner.username)}">@${esc(owner.username)}</a>`;
+        // You've ranked the same thing: offer to compare the two.
+        setupCompare(viewEl, owner.ranking, owner.username);
     } else if (!owner) {
         byline.textContent = "Shared ranking";
     }

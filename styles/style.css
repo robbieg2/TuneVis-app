@@ -4162,3 +4162,172 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 @media (max-width: 480px) {
     .profile-tools { justify-content: flex-start; }
 }
+
+/* Comparing a friend's ranking with yours (rank-compare.js). */
+.rank-view.comparing { max-width: 980px; }
+
+.rank-compare { margin-top: 4px; }
+
+.compare-summary {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+}
+
+.compare-score {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 88px;
+}
+
+.compare-score-num {
+    font-family: "Fredoka", sans-serif;
+    font-weight: 600;
+    font-size: 34px;
+    line-height: 1;
+    background: linear-gradient(90deg, #ff9ad8, #d68bff, #1db954);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.compare-score-label { font-size: 12px; opacity: 0.65; margin-top: 4px; }
+
+.compare-facts {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    margin: 0;
+    padding-left: 18px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.compare-facts li::marker { color: #1db954; }
+
+.compare-switch {
+    display: none;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.compare-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+}
+
+.compare-col {
+    min-width: 0;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compare-col-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.compare-col-head h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+
+.compare-stars {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 10px;
+    color: #ffc94d;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.compare-unrated { color: rgba(255, 255, 255, 0.5); font-weight: 400; }
+
+.compare-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.compare-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid transparent;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.compare-row.lit { border-color: rgba(29, 185, 84, 0.7); background: rgba(29, 185, 84, 0.1); }
+
+.compare-row .rank-view-num { width: 22px; font-size: 16px; }
+
+.compare-img {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.compare-text { min-width: 0; flex: 1; display: flex; flex-direction: column; text-align: left; }
+
+.compare-name {
+    font-weight: 600;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+.compare-sub { font-size: 12px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.compare-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.compare-badge.same { background: rgba(29, 185, 84, 0.2); color: #6ee7a0; }
+.compare-badge.close { background: rgba(255, 201, 77, 0.16); color: #ffd86e; }
+.compare-badge.far { background: rgba(255, 92, 138, 0.16); color: #ff9db8; }
+.compare-badge.none { background: rgba(255, 255, 255, 0.07); color: rgba(255, 255, 255, 0.55); font-weight: 400; }
+
+.rank-compare-btn.active { border-color: #1db954; }
+
+/* Phones and small tablets: one list at a time, with a switch. */
+@media (max-width: 767px) {
+    .compare-switch { display: flex; }
+    .compare-cols { grid-template-columns: minmax(0, 1fr); }
+    .compare-cols[data-show="theirs"] .compare-col.mine,
+    .compare-cols[data-show="mine"] .compare-col.theirs { display: none; }
+    .compare-summary { flex-direction: column; align-items: stretch; gap: 10px; }
+    .compare-score { flex-direction: row; justify-content: center; gap: 8px; align-items: baseline; }
+    .compare-col { padding: 10px; }
+    /* The compare button gets its own row above the others. */
+    .rank-view-actions:has(.rank-compare-btn) { flex-wrap: wrap; }
+    .rank-view-actions .rank-compare-btn { flex: 1 0 100%; }
+}
