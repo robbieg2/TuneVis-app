@@ -25,8 +25,10 @@ export function openModal(innerHtml) {
 }
 
 // Name a new folder or rename one. existing: the folders the name must not clash with.
-// onSave(name) → { error } | anything else on success.
-export function openNameModal({ title, value = "", button, existing = [], onSave, ignoreId = null }) {
+// isPublic: true / false shows the "Friends can see this folder" switch with that
+// value (leave it out before the public-folders migration).
+// onSave(name, isPublic) → { error } | anything else on success.
+export function openNameModal({ title, value = "", button, existing = [], onSave, ignoreId = null, isPublic }) {
     const { modal, close } = openModal(`
         <h2>${esc(title)}</h2>
         <form class="auth-form folder-name-form" novalidate>
@@ -34,6 +36,11 @@ export function openNameModal({ title, value = "", button, existing = [], onSave
                 <span>Folder name</span>
                 <input type="text" name="name" maxlength="${FOLDER_NAME_MAX}" autocomplete="off" placeholder="e.g. Favourites, 2026 Releases">
             </label>
+            ${isPublic === undefined ? "" : `
+            <label class="folder-visibility">
+                <input type="checkbox" name="isPublic"${isPublic ? " checked" : ""}>
+                <span><strong>Show on my profile</strong><span class="folder-visibility-note">Friends can see this folder and the rankings in it. Leave it off to keep the folder private.</span></span>
+            </label>`}
             <p class="username-status error" aria-live="polite"></p>
             <button type="submit">${esc(button)}</button>
         </form>`);
@@ -48,7 +55,7 @@ export function openNameModal({ title, value = "", button, existing = [], onSave
         const problem = folderNameProblem(input.value, existing, ignoreId);
         if (problem) { errorEl.textContent = problem; return; }
         form.querySelector("button").disabled = true;
-        const result = await onSave(input.value.trim());
+        const result = await onSave(input.value.trim(), form.elements.isPublic ? form.elements.isPublic.checked : undefined);
         form.querySelector("button").disabled = false;
         if (result?.error) { errorEl.textContent = result.error; return; }
         close();

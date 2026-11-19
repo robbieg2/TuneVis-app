@@ -10,7 +10,7 @@ import { esc } from "./auth.js";
 import { onUserChange } from "./supabase.js";
 import {
     listRankings, KIND_LABELS, sectionOf, foldersForSection,
-    loadFolders, createFolder, renameFolder, deleteFolder, FOLDER_LIMIT,
+    loadFolders, createFolder, updateFolder, deleteFolder, FOLDER_LIMIT,
 } from "./saved-rankings.js";
 import { openNameModal } from "./folder-dialog.js";
 import { artistAverages } from "./artist-ratings.js";
@@ -46,6 +46,8 @@ let rankings = [];
 let folders = [];
 let items = [];                 // [{ folder_id, ranking_id }]
 let foldersAvailable = false;   // false until the folders migration has been run
+let publicFolders = false;      // false until the public-folders migration has been run
+const PUBLIC_ICON = `<svg class="folder-chip-public" viewBox="0 0 20 20" aria-hidden="true"><circle cx="7" cy="6.5" r="3.2"/><circle cx="14.2" cy="7.5" r="2.6"/><path d="M1 17c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6z"/><path d="M13.6 11.6c3 0 5.4 2 5.4 5.1h-4.6c0-2-.3-3.6-.8-5.1z"/></svg>`;
 let averages = new Map();       // artistId → { average, count }
 let active = "all";             // "all" (every ranking in the section) or a folder id
 let typeFilter = "album";       // the open section: album | artist | artist_albums | favourites
@@ -195,13 +197,14 @@ function renderFolderBar() {
     barEl.hidden = !foldersAvailable;
     if (!foldersAvailable) return;
     const tab = inTab();
-    const chip = (id, label, count) => `
-        <button type="button" class="folder-chip${active === id ? " active" : ""}" data-folder="${esc(id)}" aria-pressed="${active === id}">
-            <span class="folder-chip-name">${esc(label)}</span><span class="folder-chip-count">${count}</span>
+    // Folders friends can see carry a small people icon.
+    const chip = (id, label, count, shared = false) => `
+        <button type="button" class="folder-chip${active === id ? " active" : ""}" data-folder="${esc(id)}" aria-pressed="${active === id}"${shared ? ` title="Friends can see this folder"` : ""}>
+            ${shared ? PUBLIC_ICON : ""}<span class="folder-chip-name">${esc(label)}</span><span class="folder-chip-count">${count}</span>
         </button>`;
     barEl.innerHTML =
         chip("all", "All", tab.length) +
-        tabFolders().map(f => chip(f.id, f.name, inFolder(f.id, tab).length)).join("") +
+        tabFolders().map(f => chip(f.id, f.name, inFolder(f.id, tab).length, f.is_public)).join("") +
         (folders.length < FOLDER_LIMIT
             ? `<button type="button" class="folder-chip folder-chip-new" id="new-folder-btn">+ New folder</button>`
             : "");
@@ -209,7 +212,13 @@ function renderFolderBar() {
 
 // Rename / Delete for the open folder, under its list.
 function renderFolderTools() {
-    toolsEl.hidden = !activeFolder();
+    const folder = activeFolder();
+    toolsEl.hidden = !folder;
+    const note = document.getElementById("folder-visibility-note");
+    if (note) {
+        note.hidden = !folder || !publicFolders;
+        note.textContent = folder?.is_public ? "Friends can see this folder on your profile." : "Only you can see this folder.";
+    }
 }
 
 function renderList() {
@@ -280,8 +289,9 @@ barEl.addEventListener("click", e => {
             title: `New ${sectionLabel()} folder`,
             button: "Create folder",
             existing: tabFolders(),
-            onSave: async name => {
-                const result = await createFolder(name, typeFilter);
+            isPublic: publicFolders ? false : undefined,
+            onSave: async (name, isPublic) => {
+                const result = await createFolder(name, typeFilter, Boolean(isPublic));
                 if (result.error) return result;
                 folders.push(result.folder);
                 active = result.folder.id;   // open the new folder straight away
@@ -303,15 +313,17 @@ document.getElementById("folder-rename").addEventListener("click", () => {
     const folder = activeFolder();
     if (!folder) return;
     openNameModal({
-        title: "Rename folder",
+        title: "Edit folder",
         value: folder.name,
-        button: "Save name",
+        button: "Save",
         existing: tabFolders(),
         ignoreId: folder.id,
-        onSave: async name => {
-            const result = await renameFolder(folder.id, name);
+        isPublic: publicFolders ? folder.is_public : undefined,
+        onSave: async (name, isPublic) => {
+            const result = await updateFolder(folder.id, { name, isPublic });
             if (result.error) return result;
             folder.name = name;
+            if (isPublic !== undefined) folder.is_public = isPublic;
             render();
         },
     });
@@ -351,7 +363,7 @@ async function load(user) {
         ]);
         if (id !== loadId) return;
         rankings = rows || [];
-        ({ folders, items, available: foldersAvailable } = library);
+        ({ folders, items, available: foldersAvailable, publicFolders = false } = library);
         const params = new URLSearchParams(window.location.search);
         const wantedType = params.get("type");
         typeFilter = SECTIONS.includes(wantedType) ? wantedType

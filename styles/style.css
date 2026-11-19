@@ -4100,3 +4100,65 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 		max-width: 170px;
 	}
 }
+
+/* Public folders: the switch in the folder dialog, the icon on shared folder chips and
+   the note under an open folder (rankings-library.js, folder-dialog.js). */
+.folder-visibility {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 4px 0 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+    cursor: pointer;
+}
+
+.folder-visibility input {
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    flex-shrink: 0;
+    accent-color: #1db954;
+}
+
+.folder-visibility strong { display: block; font-size: 14px; }
+
+.folder-visibility-note {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    opacity: 0.65;
+}
+
+.folder-chip-public {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+.folder-tools { flex-wrap: wrap; align-items: center; }
+
+.folder-visibility-tag {
+    flex-basis: 100%;
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+/* Profile: sort switch and their public folders above the cards (profile-page.js). */
+.profile-tools {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 12px;
+}
+
+.profile-folders { margin-bottom: 14px; }
+
+@media (max-width: 480px) {
+    .profile-tools { justify-content: flex-start; }
+}

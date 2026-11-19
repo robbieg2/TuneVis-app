@@ -210,26 +210,39 @@ export const FOLDER_LIMIT = 50;
 // The tables don't exist until the folders migration has been run.
 const isMissingTable = error => error?.code === "42P01" || error?.code === "PGRST205";
 
-// { folders: [{ id, name, section }], items: [{ folder_id, ranking_id }], available, sectioned }.
+// The signed-in user's own folders:
+// { folders: [{ id, name, section, is_public }], items: [{ folder_id, ranking_id }],
+//   available, sectioned, publicFolders }.
 // available is false if the database hasn't got folders yet (or the user is signed out).
 // sectioned is false before the folders-by-kind migration: folders then have no
-// section and are shared by every kind of ranking, as before.
+// section and are shared by every kind of ranking, as before. publicFolders is false
+// before the public-folders migration (no is_public column: every folder is private).
+// Filtered to the user's own rows: friends' public folders are readable too.
 export async function loadFolders() {
     const supabase = await getSupabase();
-    const none = { folders: [], items: [], available: false, sectioned: false };
-    if (!supabase || !(await getUser())) return none;
-    const selectFolders = columns => supabase.from("ranking_folders").select(columns).order("created_at", { ascending: true });
+    const none = { folders: [], items: [], available: false, sectioned: false, publicFolders: false };
+    const user = supabase ? await getUser() : null;
+    if (!user) return none;
+    const selectFolders = columns => supabase.from("ranking_folders").select(columns)
+        .eq("user_id", user.id).order("created_at", { ascending: true });
     let [f, i] = await Promise.all([
-        selectFolders("id, name, section, created_at"),
-        supabase.from("ranking_folder_items").select("folder_id, ranking_id"),
+        selectFolders("id, name, section, is_public, created_at"),
+        supabase.from("ranking_folder_items").select("folder_id, ranking_id").eq("user_id", user.id),
     ]);
     if (isMissingTable(f.error) || isMissingTable(i.error)) return none;
-    const sectioned = !isMissingColumn(f.error);
-    if (!sectioned) f = await selectFolders("id, name, created_at");
+    let publicFolders = true, sectioned = true;
+    if (isMissingColumn(f.error)) {
+        publicFolders = false;
+        f = await selectFolders("id, name, section, created_at");
+    }
+    if (isMissingColumn(f.error)) {
+        sectioned = false;
+        f = await selectFolders("id, name, created_at");
+    }
     if (f.error) throw f.error;
     if (i.error) throw i.error;
-    const folders = (f.data || []).map(x => ({ ...x, section: sectioned ? x.section : null }));
-    return { folders, items: i.data || [], available: true, sectioned };
+    const folders = (f.data || []).map(x => ({ ...x, section: sectioned ? x.section : null, is_public: publicFolders ? Boolean(x.is_public) : false }));
+    return { folders, items: i.data || [], available: true, sectioned, publicFolders };
 }
 
 // The folders a ranking of this section can go in (all of them before the migration).
@@ -248,26 +261,36 @@ export function folderNameProblem(name, existing = [], ignoreId = null) {
 
 const duplicateName = name => `You already have a folder called "${name}".`;
 
-// A folder in one section ("album", "artist_albums", ...). Returns { folder } or { error }.
-export async function createFolder(name, section) {
+// A folder in one section ("album", "artist_albums", ...), private unless isPublic
+// (visible to friends). Returns { folder } or { error }.
+export async function createFolder(name, section, isPublic = false) {
     const supabase = await getSupabase();
     const value = String(name).trim();
     const insert = row => supabase.from("ranking_folders").insert(row).select("id, name, created_at").single();
-    let { data, error } = await insert({ name: value, section });
+    let row = { name: value, section, ...(isPublic ? { is_public: true } : {}) };
+    let { data, error } = await insert(row);
+    if (isMissingColumn(error) && "is_public" in row) {   // before the public-folders migration
+        ({ is_public: isPublic, ...row } = row);
+        isPublic = false;
+        ({ data, error } = await insert(row));
+    }
     let saved = section;
     if (isMissingColumn(error)) {       // before the folders-by-kind migration
         ({ data, error } = await insert({ name: value }));
         saved = null;
     }
     if (error) return { error: error.code === "23505" ? duplicateName(value) : "That folder couldn't be created just now." };
-    return { folder: { ...data, section: saved } };
+    return { folder: { ...data, section: saved, is_public: Boolean(isPublic) } };
 }
 
-export async function renameFolder(id, name) {
+// Change a folder's name and/or who can see it: changes = { name?, isPublic? }.
+export async function updateFolder(id, { name, isPublic } = {}) {
     const supabase = await getSupabase();
-    const value = String(name).trim();
-    const { error } = await supabase.from("ranking_folders").update({ name: value }).eq("id", id);
-    if (error) return { error: error.code === "23505" ? duplicateName(value) : "That folder couldn't be renamed just now." };
+    const change = {};
+    if (name !== undefined) change.name = String(name).trim();
+    if (isPublic !== undefined) change.is_public = Boolean(isPublic);
+    const { error } = await supabase.from("ranking_folders").update(change).eq("id", id);
+    if (error) return { error: error.code === "23505" ? duplicateName(change.name) : "That folder couldn't be changed just now." };
     return { ok: true };
 }
 
