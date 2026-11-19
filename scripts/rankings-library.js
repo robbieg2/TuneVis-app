@@ -11,8 +11,10 @@ import { onUserChange } from "./supabase.js";
 import {
     listRankings, KIND_LABELS, sectionOf, foldersForSection,
     loadFolders, createFolder, updateFolder, deleteFolder, FOLDER_LIMIT,
+    addToFolder, removeFromFolder,
 } from "./saved-rankings.js";
-import { openNameModal } from "./folder-dialog.js";
+import { openNameModal, openModal } from "./folder-dialog.js";
+import { formatRating } from "./star-rating.js";
 import { artistAverages, albumArtistNames, loadAlbumArtistNames } from "./artist-ratings.js";
 import { rankingCard, isArtistKind, groupArtists } from "./ranking-cards.js";
 
@@ -225,7 +227,7 @@ function renderList() {
     }
     if (!shown.length) {
         listEl.innerHTML = folder
-            ? `<p class="tab-empty">Nothing in "${esc(folder.name)}" yet. Open one of your ${esc(noun)} rankings and use Add to folder to put it here.</p>`
+            ? `<p class="tab-empty">Nothing in "${esc(folder.name)}" yet. Press <strong>+ Add rankings</strong> below to fill it.</p>`
             : `<p class="tab-empty">No ${esc(noun)} rankings saved yet. Build one and press Save to keep it here.</p>`;
         return;
     }
@@ -313,6 +315,97 @@ document.getElementById("folder-rename").addEventListener("click", () => {
             render();
         },
     });
+});
+
+// ── Add rankings to the open folder ───────────────────────────────────
+// A pop-up listing every saved ranking that can go in this folder (the folder's kind;
+// artists as one row each), with a search box. Ticking a row adds it straight away,
+// unticking takes it out. An artist's row covers both of their rankings.
+function openAddToFolder(folder) {
+    const entries = sorted(groupArtists(inSection(rankings, typeFilter)));
+    const idsOf = e => (e.group ? e.rankings.map(r => r.id) : [e.id]);
+    const isIn = e => idsOf(e).some(id => items.some(i => i.folder_id === folder.id && i.ranking_id === id));
+    const words = e => searchable([e.title, e.source_name, KIND_LABELS[e.kind],
+        ...(e.group ? [] : artistWords(e))].join(" "));
+
+    const { modal } = openModal(`
+        <h2>Add to "${esc(folder.name)}"</h2>
+        <label class="saved-search picker-search">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.8 12.8l4.4 4.4"/></svg>
+            <input type="search" placeholder="Search your ${esc(NOUNS[typeFilter] || "")} rankings" autocomplete="off" aria-label="Search your rankings">
+        </label>
+        <p class="picker-count" aria-live="polite"></p>
+        <div class="picker-list"></div>
+        <p class="username-status error" aria-live="polite"></p>
+        <button type="button" class="picker-done">Done</button>`);
+    modal.querySelector(".library-modal-card").classList.add("picker-card");
+    const listBox = modal.querySelector(".picker-list");
+    const input = modal.querySelector("input[type=search]");
+    const errorEl = modal.querySelector(".username-status");
+    const countEl = modal.querySelector(".picker-count");
+
+    const row = e => {
+        const round = e.group || ["artist", "artist_albums", "fav_artists"].includes(e.kind) ? " round" : "";
+        const sub = e.group
+            ? [e.tracks && "Top tracks", e.albums && "Albums & EPs"].filter(Boolean).join(" · ")
+            : [e.source_name && e.source_name !== e.title ? e.source_name : null, e.kind === "album" && e.rating != null ? `${formatRating(Number(e.rating))} stars` : null].filter(Boolean).join(" · ");
+        return `<label class="picker-row">
+            <input type="checkbox" value="${esc(e.id)}"${isIn(e) ? " checked" : ""}>
+            ${e.image ? `<img class="picker-img${round}" src="${esc(e.image)}" alt="" loading="lazy">` : `<span class="picker-img${round}"></span>`}
+            <span class="picker-text"><span class="picker-name">${esc(e.title)}</span>${sub ? `<span class="picker-sub">${esc(sub)}</span>` : ""}</span>
+        </label>`;
+    };
+
+    function draw() {
+        const q = searchable(input.value.trim());
+        const shown = q ? entries.filter(e => q.split(/\s+/).every(w => words(e).includes(w))) : entries;
+        const inCount = entries.filter(isIn).length;
+        countEl.textContent = `${inCount} of ${entries.length} in this folder`;
+        listBox.innerHTML = shown.length
+            ? shown.map(row).join("")
+            : `<p class="library-modal-empty">${entries.length ? "Nothing matches that search." : "You haven't saved any rankings of this kind yet."}</p>`;
+    }
+
+    input.addEventListener("input", draw);
+    listBox.addEventListener("change", async e => {
+        const box = e.target;
+        if (box.type !== "checkbox") return;
+        const entry = entries.find(x => x.id === box.value);
+        if (!entry) return;
+        errorEl.textContent = "";
+        box.disabled = true;
+        // An artist's row: add their newest ranking, or take out all of theirs.
+        const ids = entry.group ? (box.checked ? [entry.rankings[0].id] : idsOf(entry)) : [entry.id];
+        try {
+            for (const id of ids) {
+                if (box.checked) {
+                    await addToFolder(folder.id, id);
+                    if (!items.some(i => i.folder_id === folder.id && i.ranking_id === id)) items.push({ folder_id: folder.id, ranking_id: id });
+                } else {
+                    await removeFromFolder(folder.id, id);
+                    items = items.filter(i => !(i.folder_id === folder.id && i.ranking_id === id));
+                }
+            }
+            countEl.textContent = `${entries.filter(isIn).length} of ${entries.length} in this folder`;
+            render();   // the folder's list and counts behind the pop-up
+        } catch (err) {
+            console.error(err);
+            box.checked = !box.checked;
+            errorEl.textContent = "That change couldn't be saved just now. Please try again.";
+        } finally {
+            box.disabled = false;
+        }
+    });
+    modal.querySelector(".picker-done").addEventListener("click", () => modal.querySelector(".site-info-close").click());
+
+    draw();
+    // Focus the search on desktop only: on phones it would pop the keyboard over the list.
+    if (window.matchMedia("(hover: hover)").matches) input.focus();
+}
+
+document.getElementById("folder-add").addEventListener("click", () => {
+    const folder = activeFolder();
+    if (folder) openAddToFolder(folder);
 });
 
 document.getElementById("folder-delete").addEventListener("click", async () => {
