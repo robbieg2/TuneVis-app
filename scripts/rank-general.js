@@ -3,6 +3,7 @@ import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 import { initSaveButton, KIND_LABELS } from "./saved-rankings.js";
 import { setViewMode, renderRankView, setSavedRanking, setFriendRanking } from "./rank-view.js";
+import { genreTrendingTracks, genreTrendingArtists } from "./genre-charts.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
@@ -264,7 +265,13 @@ async function resolveConcurrently(items, resolver, concurrency = 4) {
     return results;
 }
 
+// A genre's pool is what's popular in it now (genre-charts.js); Last.fm's tag charts
+// are all-time lists, so they're only the fallback. "All genres" is this week's chart.
 async function fetchPopularArtists(genre) {
+    if (genre && genre !== "all") {
+        const current = await genreTrendingArtists(genre, { limit: 15 }).catch(() => []);
+        if (current.length >= 6) return current.map(a => ({ id: a.id, name: a.name, subtitle: "Artist", image: a.image }));
+    }
     const data = genre && genre !== "all"
         ? await lastfmChart("tag.getTopArtists", 15, { tag: genre })
         : await lastfmChart("chart.getTopArtists", 15);
@@ -284,6 +291,17 @@ async function fetchPopularArtists(genre) {
 }
 
 async function fetchPopularTracks(genre) {
+    if (genre && genre !== "all") {
+        const current = await genreTrendingTracks(genre, { limit: 15 }).catch(() => []);
+        if (current.length >= 6) {
+            return current.map(item => ({
+                id: item.id,
+                name: item.name,
+                subtitle: (item.artists || []).map(a => a.name).join(", "),
+                image: item.album?.images?.[0]?.url || "",
+            }));
+        }
+    }
     const data = genre && genre !== "all"
         ? await lastfmChart("tag.getTopTracks", 15, { tag: genre })
         : await lastfmChart("chart.getTopTracks", 15);

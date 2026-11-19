@@ -2,6 +2,7 @@
 import { getSpotifyToken, saveToRecent, getRecent, syncRecent, esc } from "./auth.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
 import { getUser } from "./supabase.js";
+import { genreTrendingTracks } from "./genre-charts.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const TRENDING_CACHE_KEY = "tunevis_trending_cache";
@@ -122,10 +123,20 @@ async function fetchTrendingTracks(genre = "all") {
     }
   } catch {}
 
-  // 1. Get Last.fm chart — genre-scoped via tag.getTopTracks, or the
-  // unfiltered global chart when no genre is selected
-  const lfUrl = new URL("https://ws.audioscrobbler.com/2.0/");
   const isGenreScoped = genre && genre !== "all";
+
+  // A genre: popular recent Spotify tracks in it (genre-charts.js). Last.fm's
+  // tag.getTopTracks is an all-time list, so it never changed; it's only the fallback.
+  if (isGenreScoped) {
+    const current = await genreTrendingTracks(genre, { limit: 8 }).catch(() => []);
+    if (current.length >= 4) {
+      try { localStorage.setItem(cacheKey, JSON.stringify({ tracks: current, cachedAt: Date.now() })); } catch {}
+      return current;
+    }
+  }
+
+  // 1. Get Last.fm chart: this week's global chart, or (fallback) the genre's tag chart
+  const lfUrl = new URL("https://ws.audioscrobbler.com/2.0/");
   lfUrl.searchParams.set("method", isGenreScoped ? "tag.getTopTracks" : "chart.getTopTracks");
   lfUrl.searchParams.set("api_key", LASTFM_API_KEY);
   lfUrl.searchParams.set("limit", "8");
@@ -152,7 +163,8 @@ async function fetchTrendingTracks(genre = "all") {
         );
         const data = await res.json();
         const item = data?.tracks?.items?.[0];
-        if (item) resolved.push(item);
+        // Two chart entries can resolve to the same Spotify track: show it once.
+        if (item && !resolved.some(r => r.id === item.id)) resolved.push(item);
       } catch {}
     }
   }
