@@ -1,7 +1,7 @@
 // star-rating.js — a 1–5 star rating in half-star steps, used for album rankings.
 //
 // Click or tap the left half of a star for a half star, the right half for a whole
-// one. Keyboard: arrow keys move by half a star, Home/End jump to ½ / 5, Delete or
+// one, or drag along the stars (finger or mouse) and let go on the rating you want. Keyboard: arrow keys move by half a star, Home/End jump to ½ / 5, Delete or
 // Backspace clears. Exposed to screen readers as a slider.
 
 export const MIN_RATING = 0.5;
@@ -106,17 +106,50 @@ export function createStarRating({ value = null, onChange, label = "Your rating"
         return null;
     }
 
+    // Press, slide and release: the stars follow the finger (or mouse) and the rating
+    // is set where it's let go. Vertical swipes still scroll the page (touch-action:
+    // pan-y in the CSS); if the browser takes over for a scroll, the drag is dropped.
+    let dragId = null;
+    let setByPointer = false;   // the pointerup already set the rating: skip its click
+
+    stars.addEventListener("pointerdown", e => {
+        if (e.button !== 0) return;
+        dragId = e.pointerId;
+        setByPointer = false;
+        try { stars.setPointerCapture(e.pointerId); } catch {}
+        preview = ratingAt(e.clientX);
+        render();
+    });
     stars.addEventListener("pointermove", e => {
+        if (dragId === e.pointerId) {
+            const next = ratingAt(e.clientX);
+            if (next !== preview) { preview = next; render(); }
+            return;
+        }
         if (e.pointerType !== "mouse") return;   // no hover preview on touch
         preview = ratingAt(e.clientX);
         render();
     });
+    stars.addEventListener("pointerup", e => {
+        if (dragId !== e.pointerId) return;
+        dragId = null;
+        const value = ratingAt(e.clientX);
+        preview = e.pointerType === "mouse" ? value : null;
+        setByPointer = true;
+        if (value === current) render(); else set(value);
+    });
+    stars.addEventListener("pointercancel", () => {
+        dragId = null;
+        preview = null;
+        render();
+    });
     stars.addEventListener("pointerleave", () => {
-        if (preview === null) return;
+        if (preview === null || dragId !== null) return;
         preview = null;
         render();
     });
     stars.addEventListener("click", e => {
+        if (setByPointer) { setByPointer = false; return; }
         preview = null;
         set(ratingAt(e.clientX));
     });

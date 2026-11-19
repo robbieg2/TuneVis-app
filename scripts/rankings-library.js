@@ -18,15 +18,16 @@ const barEl = document.getElementById("folder-bar");
 const toolsEl = document.getElementById("folder-tools");
 const sortEl = document.getElementById("sort-toggle");
 const typeTabsEl = document.getElementById("type-tabs");
+const searchEl = document.getElementById("saved-search-input");
 const SORT_KEY = "tunevis_saved_sort";
 
 // Tabs by section (sectionOf in saved-rankings.js). Albums and artist albums are
 // always there; the others appear once there's a ranking of that kind.
 const TYPE_TABS = [
-    { id: "album", label: "Albums", always: true },
-    { id: "artist_albums", label: "Artist albums & EPs", always: true },
-    { id: "artist", label: "Artist top tracks" },
-    { id: "favourites", label: "Favourite artists & tracks" },
+    { id: "album", label: "Albums", noun: "album", always: true },
+    { id: "artist_albums", label: "Artist albums & EPs", noun: "artist album", always: true },
+    { id: "artist", label: "Artist top tracks", noun: "artist top tracks" },
+    { id: "favourites", label: "Favourite artists & tracks", noun: "favourites" },
 ];
 
 // ── State ──────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ let active = "all";             // "all" (every ranking in the tab) or a folder 
 let typeFilter = "album";       // a TYPE_TABS id
 let sortBy = readSortPreference(); // "recent" or "rating"
 let expanded = false;           // long lists show the first COLLAPSED_COUNT until expanded
+let query = "";                 // the search box, normalised (searchable())
 const COLLAPSED_COUNT = 6;
 const CHEVRON = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6"/></svg>`;
 let loadId = 0;
@@ -67,8 +69,18 @@ function sorted(list) {
     });
 }
 
+// Search: case- and accent-insensitive, over the ranking's name, what it ranks (album /
+// artist), its kind and its folders. Every word typed has to match somewhere.
+const searchable = text => String(text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+function matchesQuery(r) {
+    if (!query) return true;
+    const haystack = searchable([r.title, r.source_name, KIND_LABELS[r.kind], ...foldersOf(r).map(f => f.name)].join(" "));
+    return query.split(/s+/).every(word => haystack.includes(word));
+}
+const matching = () => (query ? rankings.filter(matchesQuery) : rankings);
+
 const typeTab = id => TYPE_TABS.find(t => t.id === id) || null;
-const inTab = () => rankings.filter(r => sectionOf(r.kind) === typeFilter);
+const inTab = () => matching().filter(r => sectionOf(r.kind) === typeFilter);
 const tabFolders = () => foldersForSection(folders, typeFilter);
 const inFolder = (folderId, list) => list.filter(r => items.some(i => i.folder_id === folderId && i.ranking_id === r.id));
 const activeFolder = () => tabFolders().find(f => f.id === active) || null;
@@ -101,7 +113,7 @@ function renderTypeTabs() {
     typeTabsEl.hidden = false;
     typeTabsEl.innerHTML = shown.map(t => `
         <button type="button" class="type-tab${typeFilter === t.id ? " active" : ""}" data-type="${t.id}" aria-pressed="${typeFilter === t.id}">
-            ${esc(t.label)}<span class="type-tab-count">${rankings.filter(r => sectionOf(r.kind) === t.id).length}</span>
+            ${esc(t.label)}<span class="type-tab-count">${matching().filter(r => sectionOf(r.kind) === t.id).length}</span>
         </button>`).join("");
 }
 
@@ -182,9 +194,15 @@ function renderList() {
     const folder = activeFolder();
     const tab = inTab();
     const shown = sorted(folder ? inFolder(folder.id, tab) : tab);
-    const noun = typeTab(typeFilter).label.toLowerCase();
+    const noun = typeTab(typeFilter).noun;   // "No album rankings…"
 
     listEl.innerHTML = "";
+    if (!shown.length && query) {
+        const elsewhere = matching().length;
+        listEl.innerHTML = `<p class="tab-empty">No ${esc(noun)} rankings${folder ? ` in "${esc(folder.name)}"` : ""} match "${esc(searchEl.value.trim())}".${
+            elsewhere ? ` ${elsewhere} in other tabs${folder ? " or folders" : ""}.` : ""}</p>`;
+        return;
+    }
     if (!shown.length) {
         listEl.innerHTML = folder
             ? `<p class="tab-empty">Nothing in "${esc(folder.name)}" yet. Open one of your ${esc(noun)} rankings and use Add to folder to put it here.</p>`
@@ -193,7 +211,7 @@ function renderList() {
     }
 
     // A long list shows its first few, with an arrow button to show the rest.
-    const collapsible = shown.length > COLLAPSED_COUNT;
+    const collapsible = !query && shown.length > COLLAPSED_COUNT;   // search results show in full
     const visible = collapsible && !expanded ? shown.slice(0, COLLAPSED_COUNT) : shown;
     visible.forEach(r => listEl.appendChild(rankingRow(r)));
     if (!collapsible) return;
@@ -213,6 +231,15 @@ function renderList() {
     });
     listEl.appendChild(more);
 }
+
+searchEl?.addEventListener("input", () => {
+    const next = searchable(searchEl.value.trim());
+    if (next === query) return;
+    query = next;
+    renderTypeTabs();
+    renderFolderBar();
+    renderList();
+});
 
 // ── Folder bar and tools ──────────────────────────────────────────────
 barEl.addEventListener("click", e => {
@@ -318,4 +345,9 @@ onUserChange(user => { currentUser = user; load(user); });
 
 // Coming Back from a ranking (where it may have been deleted or filed into a folder):
 // the browser can restore this page as it was, so load the list again.
-window.addEventListener("pageshow", e => { if (e.persisted && currentUser) load(currentUser); });
+// The search box starts empty every time the page is shown (see CLAUDE.md: browsers
+// restore or refill typed text on Back).
+window.addEventListener("pageshow", e => {
+    if (searchEl && (searchEl.value || query)) { searchEl.value = ""; query = ""; if (rankings.length) render(); }
+    if (e.persisted && currentUser) load(currentUser);
+});

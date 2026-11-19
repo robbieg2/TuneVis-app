@@ -261,6 +261,8 @@ async function loadAlbum(token, id) {
         id,
         name: album.name,
         subtitle: (album.artists || []).map(a => a.name).join(", "),
+        // the album's artists, each linked to their own ranking page in the header
+        artists: (album.artists || []).filter(a => a.id).map(a => ({ id: a.id, name: a.name })),
         image: album.images?.[0]?.url || "",
     };
 
@@ -364,12 +366,13 @@ function renderHead() {
                 <button id="rank-play-btn" class="rank-play-btn" type="button">${PLAY_LABEL}</button>
                 ${openInSpotifyHtml(meta.type, meta.id)}
             </div>
-            <p class="rank-head-sub">${esc(meta.subtitle)}</p>
+            <p class="rank-head-sub">${headSubtitleHtml()}</p>
         </div>
     `;
 
     document.getElementById("rank-play-btn")?.addEventListener("click", togglePlayer);
     const metaBox = headEl.querySelector(".rank-head-meta");
+    if (meta.artists?.length) loadSavedAlbumRankings().then(updateArtistLinks);
 
     if (meta.type !== "album") return;
     if (viewing) {
@@ -390,6 +393,28 @@ function renderHead() {
     });
     el.classList.add("rank-head-rating");
     metaBox.appendChild(el);
+}
+
+// An album's artist names link to that artist's ranking page: their newest saved
+// artist ranking (albums or top tracks) if there is one, else a fresh one.
+function artistHref(artist) {
+    const saved = savedRankingsList?.find(r =>
+        (r.kind === "artist_albums" || r.kind === "artist") && r.source_id === artist.id);
+    return saved ? rankingUrl(saved) : `rank.html?type=artist&id=${encodeURIComponent(artist.id)}`;
+}
+
+function headSubtitleHtml() {
+    if (!meta.artists?.length) return esc(meta.subtitle);
+    return meta.artists.map(a =>
+        `<a class="rank-head-artist" href="${esc(artistHref(a))}" data-artist-id="${esc(a.id)}" title="Rank ${esc(a.name)}">${esc(a.name)}</a>`).join(", ");
+}
+
+// Once the saved rankings have loaded, point the artist links at any saved ones.
+function updateArtistLinks() {
+    headEl.querySelectorAll(".rank-head-artist").forEach(link => {
+        const artist = meta.artists?.find(a => a.id === link.dataset.artistId);
+        if (artist) link.href = artistHref(artist);
+    });
 }
 
 // Drawn icons rather than ▶ / ✕ characters: iPhones render ▶ as a coloured emoji.
@@ -566,19 +591,29 @@ function applyListLabels() {
 // An artist's Albums & EPs ranking links each album to its own album ranking: the
 // saved one if there is one (shown with its stars), otherwise a fresh one to start.
 // Loaded once per visit, when the albums list is first shown as a finished list.
+// Also used for the album header's artist links (artistHref).
 let savedAlbumRankings = null;   // Map: Spotify album id → the newest saved album ranking
+let savedRankingsList = null;    // all the user's saved rankings, newest first
+let savedRankingsLoading = null;
 
-async function loadSavedAlbumRankings() {
-    if (savedAlbumRankings) return;
-    const map = new Map();
-    try {
-        for (const r of (await listRankings()) || []) {   // newest first
-            if (r.kind === "album" && r.source_id && !map.has(r.source_id)) map.set(r.source_id, r);
+function loadSavedAlbumRankings() {
+    if (savedAlbumRankings) return Promise.resolve();
+    savedRankingsLoading ??= (async () => {
+        const map = new Map();
+        let rows = [];
+        try {
+            rows = (await listRankings()) || [];   // newest first; null when signed out
+            for (const r of rows) {
+                if (r.kind === "album" && r.source_id && !map.has(r.source_id)) map.set(r.source_id, r);
+            }
+        } catch (err) {
+            console.error("[accounts] Could not load saved rankings:", err);
         }
-    } catch (err) {
-        console.error("[accounts] Could not load album rankings:", err);
-    }
-    savedAlbumRankings = map;
+        savedRankingsList = rows;
+        savedAlbumRankings = map;
+        savedRankingsLoading = null;
+    })();
+    return savedRankingsLoading;
 }
 
 function albumLink(album) {
@@ -1068,6 +1103,11 @@ window.addEventListener("pageshow", e => {
     if (e.persisted && viewing && meta && isAlbumsList()) {
         savedAlbumRankings = null;
         loadSavedAlbumRankings().then(() => { if (viewing && isAlbumsList()) renderView(); });
+    }
+    // Back from an artist's page, where their ranking may have just been saved.
+    if (e.persisted && meta?.artists?.length) {
+        savedAlbumRankings = null;
+        loadSavedAlbumRankings().then(updateArtistLinks);
     }
 });
 
