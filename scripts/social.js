@@ -4,7 +4,7 @@
 import { esc } from "./auth.js";
 import { onUserChange, loginUrl, accountsConfigured } from "./supabase.js";
 import { getMyUsername } from "./profile.js";
-import { loadFriends, loadFeed, searchProfiles, relationTo, deletePost } from "./social-data.js";
+import { loadFriends, loadFeed, searchProfiles, relationTo, deletePost, likePost, unlikePost, addComment, deleteComment } from "./social-data.js";
 import { avatarHtml, timeAgo, profileUrl, relationButtonsHtml, runRelationAction, postHtml } from "./social-ui.js";
 
 const gateEl = document.getElementById("social-gate");
@@ -65,6 +65,7 @@ async function renderFeed() {
             </div>`;
             return;
         }
+        feedPosts = posts;
         feedEl.innerHTML = posts.map(postHtml).join("");
     } catch (err) {
         console.error(err);
@@ -72,9 +73,83 @@ async function renderFeed() {
     }
 }
 
+// ── Likes and comments ─────────────────────────────────────────────────
+let feedPosts = [];
+const postFor = el => feedPosts.find(p => p.id === el.closest(".post")?.dataset.postId);
+
+// Redraws one post in place (after a like or a comment), keeping the comment box focused.
+function redrawPost(post, { focusComment = false } = {}) {
+    const el = feedEl.querySelector(`.post[data-post-id="${CSS.escape(post.id)}"]`);
+    if (!el) return;
+    el.outerHTML = postHtml(post);
+    if (focusComment) feedEl.querySelector(`.post[data-post-id="${CSS.escape(post.id)}"] .post-comment-form input`)?.focus();
+}
+
+async function toggleLike(post) {
+    const me = friendsData.me.id;
+    const wasLiked = post.liked;
+    // Show it straight away; put it back if saving fails.
+    post.liked = !wasLiked;
+    post.likes = wasLiked ? post.likes.filter(l => l.user_id !== me) : [...post.likes, { user_id: me, username: myUsername }];
+    redrawPost(post);
+    try {
+        if (wasLiked) await unlikePost(post.id); else await likePost(post.id);
+    } catch (err) {
+        console.error(err);
+        post.liked = wasLiked;
+        post.likes = wasLiked ? [...post.likes, { user_id: me, username: myUsername }] : post.likes.filter(l => l.user_id !== me);
+        redrawPost(post);
+        alert("That like couldn't be saved just now. Please try again.");
+    }
+}
+
+feedEl.addEventListener("submit", async e => {
+    const form = e.target.closest(".post-comment-form");
+    if (!form) return;
+    e.preventDefault();
+    const post = postFor(form);
+    const input = form.elements.body;
+    if (!post || !input.value.trim()) return;
+    const btn = form.querySelector("button");
+    btn.disabled = input.disabled = true;
+    try {
+        const saved = await addComment(post.id, input.value);
+        post.comments = [...post.comments, { ...saved, user_id: friendsData.me.id, username: myUsername, mine: true, removable: true }];
+        redrawPost(post, { focusComment: true });
+    } catch (err) {
+        console.error(err);
+        btn.disabled = input.disabled = false;
+        alert("That comment couldn't be posted just now. Please try again.");
+    }
+});
+
 feedEl.addEventListener("click", async e => {
     const tabLink = e.target.closest("[data-open-tab]");
     if (tabLink) { e.preventDefault(); openTab(tabLink.dataset.openTab); return; }
+    const act = e.target.closest('[data-action="like"], [data-action="comment"], [data-action="delete-comment"]');
+    if (act) {
+        const post = postFor(act);
+        if (!post) return;
+        if (act.dataset.action === "like") { toggleLike(post); return; }
+        if (act.dataset.action === "comment") {
+            post.expanded = !post.expanded || act.classList.contains("post-more-comments");
+            redrawPost(post, { focusComment: post.expanded });
+            return;
+        }
+        const row = act.closest(".post-comment");
+        if (!confirm("Delete this comment?")) return;
+        act.disabled = true;
+        try {
+            await deleteComment(row.dataset.commentId);
+            post.comments = post.comments.filter(c => c.id !== row.dataset.commentId);
+            redrawPost(post);
+        } catch (err) {
+            console.error(err);
+            act.disabled = false;
+            alert("That comment couldn't be deleted just now. Please try again.");
+        }
+        return;
+    }
     const btn = e.target.closest('[data-action="remove-post"]');
     if (!btn) return;
     if (!confirm("Remove this post from the feed? The ranking itself stays saved.")) return;

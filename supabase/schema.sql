@@ -554,3 +554,92 @@ create trigger rankings_touch_updated_at
   before update of kind, source_id, source_name, genre, title, size, item_ids, items, image, rating
   on public.rankings
   for each row execute function public.touch_updated_at();
+
+
+-- ===========================================================================
+-- Migration (Nov 2026): likes and comments on feed posts
+-- On an existing database, run just this block (from here to the end of the file)
+-- in the SQL Editor. Needs the social block.
+--
+-- Anyone who can see a post (its author and their friends) can like it and comment
+-- on it. You can remove your own likes and comments; a post's author can also remove
+-- comments on their post. Deleting a post, or an account, removes its likes and
+-- comments.
+-- ===========================================================================
+
+create table public.post_likes (
+  post_id     uuid not null references public.ranking_posts (id) on delete cascade,
+  user_id     uuid not null default auth.uid()
+              references auth.users (id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+create table public.post_comments (
+  id          uuid primary key default gen_random_uuid(),
+  post_id     uuid not null references public.ranking_posts (id) on delete cascade,
+  user_id     uuid not null default auth.uid()
+              references auth.users (id) on delete cascade,
+  body        text not null check (char_length(btrim(body)) between 1 and 500),
+  created_at  timestamptz not null default now()
+);
+create index post_comments_post on public.post_comments (post_id, created_at);
+
+alter table public.post_likes    enable row level security;
+alter table public.post_comments enable row level security;
+
+-- The subqueries run under the user's own row-level security on ranking_posts, so
+-- they only find posts the user is allowed to see.
+create policy "Likes visible on posts you can see"
+  on public.post_likes for select to authenticated
+  using (exists (select 1 from public.ranking_posts p where p.id = post_id));
+create policy "Users like posts they can see"
+  on public.post_likes for insert to authenticated
+  with check (user_id = (select auth.uid())
+              and exists (select 1 from public.ranking_posts p where p.id = post_id));
+create policy "Users remove their own likes"
+  on public.post_likes for delete to authenticated
+  using (user_id = (select auth.uid()));
+
+create policy "Comments visible on posts you can see"
+  on public.post_comments for select to authenticated
+  using (exists (select 1 from public.ranking_posts p where p.id = post_id));
+create policy "Users comment on posts they can see"
+  on public.post_comments for insert to authenticated
+  with check (user_id = (select auth.uid())
+              and exists (select 1 from public.ranking_posts p where p.id = post_id));
+create policy "Users remove their own comments, authors any on their post"
+  on public.post_comments for delete to authenticated
+  using (user_id = (select auth.uid())
+         or exists (select 1 from public.ranking_posts p
+                    where p.id = post_id and p.user_id = (select auth.uid())));
+
+grant select, insert, delete on public.post_likes    to authenticated;
+grant select, insert, delete on public.post_comments to authenticated;
+
+-- The likes and comments on these posts, with each person's username, for the feed.
+-- Security definer because a friend's friend who commented isn't someone you can look
+-- up yourself; it only answers for posts you can see (yours or a friend's), and only
+-- gives usernames, never anything else about an account.
+create function public.post_activity(p_post_ids uuid[])
+returns table (post_id uuid, kind text, id uuid, user_id uuid, username text, body text, created_at timestamptz)
+language sql stable security definer set search_path = '' as $$
+  with visible as (
+    select p.id from public.ranking_posts p
+    where p.id = any (p_post_ids)
+      and (p.user_id = (select auth.uid()) or public.is_friend(p.user_id))
+  )
+  select l.post_id, 'like', null::uuid, l.user_id, pr.username, null::text, l.created_at
+  from public.post_likes l
+  join visible v on v.id = l.post_id
+  left join public.profiles pr on pr.user_id = l.user_id
+  union all
+  select c.post_id, 'comment', c.id, c.user_id, pr.username, c.body, c.created_at
+  from public.post_comments c
+  join visible v on v.id = c.post_id
+  left join public.profiles pr on pr.user_id = c.user_id
+  order by 7;
+$$;
+
+revoke all on function public.post_activity(uuid[]) from public, anon;
+grant execute on function public.post_activity(uuid[]) to authenticated;

@@ -161,8 +161,10 @@ export async function loadFeed({ limit = 40 } = {}) {
     if (rError) throw rError;
     const byId = new Map((rankings || []).map(r => [r.id, r]));
     const names = await usernames(posts.map(p => p.user_id)).catch(() => new Map());
+    const activity = await postActivity(posts.map(p => p.id));
     return {
         available: true,
+        social: activity.available,   // likes and comments (false before their migration)
         posts: posts
             .filter(p => byId.has(p.ranking_id))
             .map(p => ({
@@ -170,8 +172,67 @@ export async function loadFeed({ limit = 40 } = {}) {
                 username: names.get(p.user_id) || "unknown",
                 ranking: byId.get(p.ranking_id),
                 mine: p.user_id === user.id,
+                ...activityFor(p, activity, user.id),
             })),
     };
+}
+
+// ── Likes and comments ─────────────────────────────────────────────────
+export const COMMENT_MAX = 500;
+
+// Likes and comments on these posts, with usernames (post_activity()):
+// { available, rows: [{ post_id, kind: "like" | "comment", id, user_id, username, body, created_at }] }.
+async function postActivity(postIds) {
+    const { supabase } = await client();
+    if (!postIds.length) return { available: true, rows: [] };
+    const { data, error } = await supabase.rpc("post_activity", { p_post_ids: postIds });
+    if (error) {
+        if (isMissing(error)) return { available: false, rows: [] };
+        console.warn("[feed] likes and comments couldn't be loaded:", error);
+        return { available: false, rows: [] };
+    }
+    return { available: true, rows: data || [] };
+}
+
+// { likes: [{ user_id, username }], liked, comments: [{ id, user_id, username, body,
+//   created_at, mine, removable }] } for one post (removable: yours, or on your post).
+function activityFor(post, activity, me) {
+    const rows = activity.rows.filter(r => r.post_id === post.id);
+    const likes = rows.filter(r => r.kind === "like").map(r => ({ user_id: r.user_id, username: r.username || "someone" }));
+    const comments = rows.filter(r => r.kind === "comment").map(r => ({
+        id: r.id, user_id: r.user_id, username: r.username || "someone", body: r.body, created_at: r.created_at,
+        mine: r.user_id === me, removable: r.user_id === me || post.user_id === me,
+    }));
+    return { likes, liked: likes.some(l => l.user_id === me), comments };
+}
+
+export async function likePost(postId) {
+    const { supabase } = await client();
+    const { error } = await supabase.from("post_likes").insert({ post_id: postId });
+    if (error && error.code !== "23505") throw error;   // already liked: fine
+}
+
+export async function unlikePost(postId) {
+    const { supabase, user } = await client();
+    const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+    if (error) throw error;
+}
+
+// Returns the new comment { id, created_at }.
+export async function addComment(postId, body) {
+    const { supabase } = await client();
+    const text = String(body || "").trim().slice(0, COMMENT_MAX);
+    if (!text) throw new Error("empty");
+    const { data, error } = await supabase.from("post_comments")
+        .insert({ post_id: postId, body: text }).select("id, created_at").single();
+    if (error) throw error;
+    return { ...data, body: text };
+}
+
+export async function deleteComment(commentId) {
+    const { supabase } = await client();
+    const { error } = await supabase.from("post_comments").delete().eq("id", commentId);
+    if (error) throw error;
 }
 
 // Your posts of one ranking (to show "Shared" on its page), newest first.

@@ -4401,3 +4401,123 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 @media (hover: hover) {
     .pin-btn:not(.on):hover { background: rgba(0, 0, 0, 0.75); border-color: #ffc94d; }
 }
+
+/* Likes and comments under feed posts (social-ui.js postSocialHtml, social.js). */
+.post-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.post-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.post-act svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+}
+
+.post-act.like.on { color: #ff5c8a; border-color: rgba(255, 92, 138, 0.45); }
+.post-act.like.on svg { fill: currentColor; }
+
+@media (hover: hover) {
+    .post-act:hover { background: rgba(255, 255, 255, 0.07); }
+}
+
+.post-liked-by {
+    margin: 8px 2px 0;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+.post-liked-by a,
+.post-comment-name {
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.post-more-comments {
+    margin: 8px 0 0;
+    padding: 0;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+}
+
+.post-comments {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.post-comment {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.post-comment-avatar { flex-shrink: 0; text-decoration: none; }
+
+.post-comment-body { min-width: 0; }
+
+.post-comment-body p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.post-comment-meta {
+    font-size: 12px;
+    opacity: 0.55;
+}
+
+.post-comment-delete {
+    padding: 0;
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 12px;
+    text-decoration: underline;
+}
+
+.post-comment-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.post-comment-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+}
+
+.post-comment-form button { flex-shrink: 0; padding: 8px 16px; }

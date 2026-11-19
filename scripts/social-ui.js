@@ -81,5 +81,49 @@ export function postHtml(post) {
                     ${more > 0 ? `<span class="post-more">+ ${more} more</span>` : ""}
                 </span>
             </a>
+            ${post.likes ? postSocialHtml(post) : ""}
         </article>`;
+}
+
+// ── Likes and comments under a post ───────────────────────────────────
+const HEART = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.4C1.5 7.8 3.6 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 3.4 0 5.5 3.3 4.3 6.6-1.8 4.8-9.3 9.4-9.3 9.4z"/></svg>`;
+const BUBBLE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A2.5 2.5 0 0 1 3 13.5z"/></svg>`;
+const SHOWN_COMMENTS = 2;
+
+function likedByHtml(likes) {
+    if (!likes.length) return "";
+    const names = likes.slice(0, 2).map(l => `<a href="${esc(profileUrl(l.username))}">@${esc(l.username)}</a>`);
+    const others = likes.length - names.length;
+    return `<p class="post-liked-by">Liked by ${names.join(others ? ", " : " and ")}${others ? ` and ${others} other${others === 1 ? "" : "s"}` : ""}</p>`;
+}
+
+// post.expanded: every comment and the comment box are showing.
+export function postSocialHtml(post) {
+    const comments = post.comments || [];
+    const hidden = post.expanded ? 0 : Math.max(0, comments.length - SHOWN_COMMENTS);
+    const shown = comments.slice(hidden);
+    return `
+        <div class="post-actions">
+            <button type="button" class="post-act like${post.liked ? " on" : ""}" data-action="like" aria-pressed="${post.liked}" aria-label="${post.liked ? "Unlike" : "Like"}">
+                ${HEART}<span>${post.likes.length || ""}</span>
+            </button>
+            <button type="button" class="post-act" data-action="comment" aria-expanded="${Boolean(post.expanded)}" aria-label="Comments">
+                ${BUBBLE}<span>${comments.length || ""}</span>
+            </button>
+        </div>
+        ${likedByHtml(post.likes)}
+        ${hidden ? `<button type="button" class="post-more-comments" data-action="comment">View all ${comments.length} comments</button>` : ""}
+        ${shown.length ? `<ul class="post-comments">${shown.map(c => `
+            <li class="post-comment" data-comment-id="${esc(c.id)}">
+                <a class="post-comment-avatar" href="${esc(profileUrl(c.username))}">${avatarHtml(c.username, 28)}</a>
+                <div class="post-comment-body">
+                    <p><a class="post-comment-name" href="${esc(profileUrl(c.username))}">@${esc(c.username)}</a> ${esc(c.body)}</p>
+                    <span class="post-comment-meta">${esc(timeAgo(c.created_at))}${c.removable ? ` · <button type="button" class="post-comment-delete" data-action="delete-comment">Delete</button>` : ""}</span>
+                </div>
+            </li>`).join("")}</ul>` : ""}
+        ${post.expanded ? `
+            <form class="post-comment-form" novalidate>
+                <input type="text" name="body" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="Add a comment…" aria-label="Add a comment">
+                <button type="submit" class="secondary-btn">Post</button>
+            </form>` : ""}`;
 }
