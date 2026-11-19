@@ -3696,3 +3696,373 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 		gap: 16px 12px;
 	}
 }
+
+/* ── Social (social.html, profile.html; social.js, profile-page.js) ── */
+.social-page,
+.profile-page {
+    width: 100%;
+    max-width: 680px;
+    box-sizing: border-box;
+    margin: 18px auto 32px;
+    padding: 0 20px;
+    text-align: left;
+}
+
+.social-gate-card {
+    max-width: 440px;
+    margin: 12px auto;
+    padding: 26px 24px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+}
+
+.social-gate-card h2 { margin: 0 0 8px; font-size: 20px; }
+.social-gate-card p { margin: 0 0 14px; opacity: 0.8; }
+
+.social-gate-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+    font-family: "Fredoka", sans-serif;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, hsl(var(--avatar-hue, 280) 70% 62%), hsl(calc(var(--avatar-hue, 280) + 50) 60% 45%));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.social-me { margin-bottom: 14px; }
+
+.social-me-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.social-me-name { display: block; font-weight: 700; font-size: 17px; }
+.social-me-sub { display: block; font-size: 13px; color: #1db954; }
+
+.social-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.social-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    margin-bottom: -1px;
+    padding: 10px 14px;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.social-tab.active { color: #fff; border-bottom-color: #1db954; }
+
+.social-tab-badge {
+    min-width: 18px;
+    padding: 1px 6px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: #ff5c8a;
+    color: #fff;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
+}
+
+.social-heading {
+    font-size: 15px;
+    margin: 20px 0 10px;
+    opacity: 0.85;
+}
+
+#friends-requests > .social-heading:first-child { margin-top: 4px; }
+
+.social-empty {
+    padding: 18px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.14);
+    font-size: 14px;
+}
+
+.social-empty p { margin: 0 0 8px; opacity: 0.85; }
+.social-empty p:last-child { margin-bottom: 0; }
+
+.social-link { color: #1db954; font-weight: 600; text-decoration: none; }
+
+.social-hint { margin: 8px 2px 12px; font-size: 12px; opacity: 0.55; }
+
+.people-search { max-width: none; }
+
+.people-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.person-link {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.person-text { min-width: 0; display: flex; flex-direction: column; }
+
+.person-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.person-note { font-size: 12px; opacity: 0.6; }
+
+.person-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.person-btn { padding: 7px 14px; font-size: 13px; }
+
+.person-btn.subtle {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.relation-label { font-size: 12px; opacity: 0.6; }
+
+/* Feed posts */
+.feed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.post {
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.post-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.post-author {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.post-author-text { min-width: 0; display: flex; flex-direction: column; }
+.post-username { font-weight: 700; font-size: 14px; }
+.post-time { font-size: 12px; opacity: 0.55; }
+
+.post-remove {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+}
+
+.post-caption {
+    margin: 10px 0 0;
+    font-size: 15px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.post-ranking {
+    display: flex;
+    gap: 14px;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.22);
+    color: inherit;
+    text-decoration: none;
+}
+
+.post-cover {
+    width: 112px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+    align-self: flex-start;
+}
+
+.post-ranking-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.post-ranking-title {
+    font-weight: 700;
+    font-size: 16px;
+    overflow-wrap: anywhere;
+}
+
+/* Numbered with a counter: the li's overflow: hidden (for the ellipsis) hides list markers. */
+.post-top {
+    list-style: none;
+    counter-reset: post-top;
+    margin: 6px 0 0;
+    padding-left: 0;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+.post-top li {
+    counter-increment: post-top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.post-top li::before { content: counter(post-top) ". "; color: #1db954; font-weight: 700; }
+
+.post-more { font-size: 12px; opacity: 0.55; }
+
+@media (hover: hover) {
+    .post-ranking:hover .post-ranking-title,
+    .person-link:hover .person-name,
+    .post-author:hover .post-username { text-decoration: underline; }
+    .person-btn.subtle:hover,
+    .post-remove:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+}
+
+/* Profiles */
+.profile-head {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.profile-head-text { min-width: 0; }
+
+.profile-name {
+    margin: 0 0 4px;
+    font-size: 24px;
+    overflow-wrap: anywhere;
+}
+
+.profile-sub { margin: 0 0 8px; font-size: 13px; opacity: 0.6; }
+
+.profile-actions { justify-content: flex-start; }
+
+.profile-tabs { margin-bottom: 14px; }
+
+/* Share to feed, and a friend's ranking (rank-view.js) */
+.share-note { font-size: 13px; opacity: 0.7; margin: 0 0 12px; }
+
+.share-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 76px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+}
+
+.share-count { margin: -4px 0 6px; font-size: 12px; opacity: 0.5; text-align: right; }
+
+.share-done { font-size: 16px; font-weight: 600; color: #1db954; margin: 6px 0 10px; }
+
+.rank-view-byline {
+    margin: 0 0 6px;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.rank-view-byline a { color: #1db954; font-weight: 600; text-decoration: none; }
+
+.rank-own-btn { display: contents; }
+
+/* Social: phones. Three sections in the header switcher need tighter buttons. */
+@media (max-width: 480px) {
+    .social-page,
+    .profile-page { padding: 0 16px; }
+
+    .section-nav-link {
+        gap: 6px;
+        padding: 9px 10px;
+        font-size: 14px;
+    }
+
+    .section-nav-link svg { width: 14px; height: 14px; }
+
+    .social-tab { padding: 10px 10px; font-size: 14px; }
+
+    .person { flex-wrap: wrap; }
+    .person-actions { margin-left: auto; }
+
+    .post-cover { width: 84px; }
+
+    .profile-head { gap: 14px; }
+    .profile-name { font-size: 20px; }
+}
+
+@media (max-width: 360px) {
+    .section-nav-link { padding: 8px 7px; font-size: 13px; gap: 4px; }
+    .section-nav-link svg { width: 12px; height: 12px; }
+}

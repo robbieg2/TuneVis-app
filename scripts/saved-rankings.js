@@ -6,7 +6,7 @@
 // with ?saved=<id> added; saving again from that page updates the same row.
 import { accountsConfigured, getSupabase, getUser, loginUrl } from "./supabase.js";
 
-const BASE_COLUMNS = "id, kind, source_id, source_name, genre, title, size, item_ids, items, image, updated_at";
+const BASE_COLUMNS = "id, user_id, kind, source_id, source_name, genre, title, size, item_ids, items, image, updated_at";
 const COLUMNS = `${BASE_COLUMNS}, rating`;
 
 // Postgres "column does not exist" / PostgREST "column not found": the ratings
@@ -49,7 +49,9 @@ export const SECTION_OF_KIND = {
 export const sectionOf = kind => SECTION_OF_KIND[kind] || "album";
 
 // A saved ranking's page. Without &edit=1 it opens as the finished list.
-export function rankingUrl(r) {
+// { friend: true } for someone else's ranking (social): it opens read-only, with
+// from=<id> instead of saved=<id>, so nothing on the page can try to save over it.
+export function rankingUrl(r, { friend = false } = {}) {
     const p = new URLSearchParams();
     let page;
     if (r.kind === "artist" || r.kind === "album" || r.kind === "artist_albums") {
@@ -66,16 +68,19 @@ export function rankingUrl(r) {
     if (r.item_ids?.length) p.set("order", r.item_ids.join(","));
     p.set("name", r.title);
     if (r.kind === "album" && r.rating != null) p.set("rating", String(Number(r.rating)));
-    p.set("saved", r.id);
+    p.set(friend ? "from" : "saved", r.id);
     return `${page}?${p.toString()}`;
 }
 
 // The signed-in user's saved rankings, newest first. null when signed out.
+// Filtered to their own: once they have friends, row-level security also lets them
+// read their friends' rankings.
 export async function listRankings() {
     const supabase = await getSupabase();
-    if (!supabase || !(await getUser())) return null;
+    const user = supabase ? await getUser() : null;
+    if (!user) return null;
     const { data, error } = await selectRankings(q =>
-        q.order("updated_at", { ascending: false }).limit(200));
+        q.eq("user_id", user.id).order("updated_at", { ascending: false }).limit(200));
     if (error) throw error;
     return data || [];
 }
@@ -120,10 +125,12 @@ export function initSaveButton({ button, getRecord, getSavedId, setSavedId, empt
     async function loadSavedState() {
         lastSaved = null;
         const id = getSavedId();
-        if (!id || !(await getUser())) return refresh();
+        const user = id ? await getUser() : null;
+        if (!id || !user) return refresh();
         const { data } = await selectRankings(q => q.eq("id", id).maybeSingle());
         if (id !== getSavedId()) return;          // the page moved on while this loaded
-        if (data) lastSaved = comparable(data);
+        // Only your own row counts: a friend's is readable too, but saving makes a copy.
+        if (data && data.user_id === user.id) lastSaved = comparable(data);
         else setSavedId(null);                    // deleted, or someone else's link
         refresh();
     }

@@ -2,7 +2,7 @@
 import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 import { initSaveButton, KIND_LABELS } from "./saved-rankings.js";
-import { setViewMode, renderRankView, setSavedRanking } from "./rank-view.js";
+import { setViewMode, renderRankView, setSavedRanking, setFriendRanking } from "./rank-view.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
@@ -46,6 +46,7 @@ let rankSize = 5;
 let rankedIds = [];
 let listName = "";
 let savedId = null;         // the saved ranking (account) this mode is editing, if any
+let friendId = null;        // a friend's ranking (from=<id>), shown read-only
 let saveCtl = { refresh() {}, reset() {}, isDirty: () => false, save: async () => true };
 let viewing = false;        // showing a saved ranking as a finished list
 
@@ -93,6 +94,7 @@ function getParams() {
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
         name: p.get("name") || null,
         saved: p.get("saved") || null,
+        from: p.get("from") || null,
         edit: p.get("edit") === "1",
     };
 }
@@ -105,6 +107,7 @@ function rankingParams() {
     if (rankedIds.length) p.set("order", rankedIds.join(","));
     if (listName) p.set("name", listName);
     if (savedId) p.set("saved", savedId);
+    if (friendId) p.set("from", friendId);
     // A saved ranking opens as the finished list unless the URL says it's being edited.
     if (savedId && !viewing) p.set("edit", "1");
     return p;
@@ -162,6 +165,10 @@ doneBtn?.addEventListener("click", async () => {
 
 // Tells the finished-list view which saved ranking it shows (for Add to folder / Delete).
 function syncSavedRanking() {
+    if (friendId) {
+        setFriendRanking(friendId, `rank-general.html?mode=${mode}&genre=${encodeURIComponent(genre)}`);
+        return;
+    }
     setSavedRanking(savedId ? { id: savedId, kind: (mode === "artist" ? "fav_artists" : "fav_tracks"), title: listName || defaultListName() } : null);
 }
 
@@ -823,7 +830,9 @@ async function init() {
         listName = params.name || defaultListName();
         savedId = params.saved;
         // A saved ranking opens as the finished list, unless the URL says it's being edited.
-        viewing = Boolean(savedId) && !params.edit;
+        // A friend's ranking (from=<id>) only ever shows as the finished list.
+        friendId = savedId ? null : params.from;
+        viewing = (Boolean(savedId) && !params.edit) || Boolean(friendId);
         if (listNameInput) listNameInput.value = listName;
 
         document.querySelectorAll("#rank-mode-toggle .tab-btn").forEach(btn => {

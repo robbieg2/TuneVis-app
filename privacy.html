@@ -67,11 +67,12 @@
     <article class="content-article">
       <p class="content-kicker">Legal</p>
       <h1>Privacy policy</h1>
-      <p class="content-updated">Last updated: 16 November 2026</p>
+      <p class="content-updated">Last updated: 19 November 2026</p>
       <p class="content-lead">TuneVis is built to collect as little about you as possible. You can use it without an account, there are no adverts or tracking, and we never sell your data. This policy explains exactly what is stored, where, and how to delete it.</p>
 
       <nav class="content-toc" aria-label="On this page">
         <a href="#what-we-collect">What we collect</a>
+        <a href="#social">Friends and sharing</a>
         <a href="#how-we-use-it">How we use it</a>
         <a href="#services">Services we rely on</a>
         <a href="#storage">Cookies and browser storage</a>
@@ -87,20 +88,30 @@
       <ul class="content-list">
         <li><strong>Your email address</strong>, to sign you in and send account emails (confirming your address, resetting your password).</li>
         <li><strong>Your password</strong>, which is stored only in a securely hashed form by our authentication provider. We can never see it.</li>
-        <li><strong>Your username</strong>, if you choose one. For now only you can see it.</li>
+        <li><strong>Your username</strong>, if you choose one. Other signed-in users can find it by searching (see <a href="#social">Friends and sharing</a>).</li>
         <li><strong>What you save</strong>: your rankings (their names, the songs, albums or artists in them and their order), album star ratings, and the folders you organise them into.</li>
         <li><strong>Recently viewed</strong>: the last 10 songs you opened while signed in, so the list follows you between devices.</li>
+        <li><strong>Friends and posts</strong>: the friend requests you send and accept, and the rankings you share to your feed with any caption you add.</li>
       </ul>
       <p>We don't collect your name, location, payment details or anything from your Spotify account. You don't sign in to TuneVis with Spotify, and TuneVis can't see or change your Spotify account.</p>
 
+      <h2 id="social">Friends and sharing</h2>
+      <p>Social features are optional and only work once you've chosen a username.</p>
+      <ul class="content-list">
+        <li><strong>Your username</strong> can be found by any signed-in TuneVis user who searches for it, and is shown to people you send a friend request to or receive one from. Nothing else about your account (such as your email address) is shown.</li>
+        <li><strong>Your friends</strong>, meaning people whose request you accepted or who accepted yours, can see all of your saved rankings and star ratings, and the rankings you share to the feed with their captions. Your folders and recently viewed tracks stay private.</li>
+        <li><strong>Everyone else</strong> sees none of your rankings or posts.</li>
+        <li>You can remove a post, cancel or decline a request, or remove a friend at any time. Removing a friend stops you both seeing each other's rankings and posts straight away.</li>
+      </ul>
+
       <h2 id="how-we-use-it">How we use it</h2>
-      <p>Only to run TuneVis: signing you in, saving and showing your rankings, keeping your recently viewed tracks, and sending account emails you ask for. We don't use your data for advertising, profiling or analytics, and we don't sell or share it with anyone for marketing.</p>
+      <p>Only to run TuneVis: signing you in, saving and showing your rankings, showing them to your friends, keeping your recently viewed tracks, and sending account emails you ask for. We don't use your data for advertising, profiling or analytics, and we don't sell or share it with anyone for marketing.</p>
       <p>Under UK and EU data protection law, our lawful basis is that this processing is necessary to provide the service you signed up for.</p>
 
       <h2 id="services">Services we rely on</h2>
       <p>TuneVis uses these providers to work. Each handles data under its own privacy policy.</p>
       <ul class="content-list">
-        <li><strong>Supabase</strong> stores accounts and saved data (email, hashed password, username, rankings, ratings, folders, recently viewed) and sends account emails.</li>
+        <li><strong>Supabase</strong> stores accounts and saved data (email, hashed password, username, rankings, ratings, folders, recently viewed, friends and posts) and sends account emails.</li>
         <li><strong>Vercel</strong> hosts the website. Like any web host, it processes your IP address and basic request details to deliver pages.</li>
         <li><strong>Spotify</strong> provides song, artist and album details and the embedded player. Your searches are sent to Spotify's API. When you use the player, Spotify may set its own cookies.</li>
         <li><strong>ReccoBeats</strong> provides audio features for the songs you open.</li>

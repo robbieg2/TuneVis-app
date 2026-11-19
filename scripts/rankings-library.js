@@ -9,12 +9,12 @@
 import { esc } from "./auth.js";
 import { onUserChange } from "./supabase.js";
 import {
-    listRankings, rankingUrl, KIND_LABELS, sectionOf, foldersForSection,
+    listRankings, KIND_LABELS, sectionOf, foldersForSection,
     loadFolders, createFolder, renameFolder, deleteFolder, FOLDER_LIMIT,
 } from "./saved-rankings.js";
 import { openNameModal } from "./folder-dialog.js";
-import { starsHtml, formatRating } from "./star-rating.js";
-import { artistAverages, formatAverage } from "./artist-ratings.js";
+import { artistAverages } from "./artist-ratings.js";
+import { rankingCard, isArtistKind } from "./ranking-cards.js";
 
 const section = document.getElementById("saved-rankings");
 const listEl = document.getElementById("saved-rankings-list");
@@ -62,7 +62,6 @@ function readSortPreference() {
     catch { return "recent"; }
 }
 
-const isArtistKind = r => r.kind === "artist" || r.kind === "artist_albums";
 // The stars a card shows: an album's own rating, or an artist's average.
 function ratingOf(r) {
     if (r.kind === "album") return r.rating != null ? Number(r.rating) : null;
@@ -213,45 +212,6 @@ function renderFolderTools() {
     toolsEl.hidden = !activeFolder();
 }
 
-// A card: large cover, then the name, a short line about it, and its stars.
-function rankingCard(r) {
-    const card = document.createElement("a");
-    card.className = "saved-card";
-    card.href = rankingUrl(r);
-    const count = r.item_ids?.length || 0;
-    const round = ["artist", "artist_albums", "fav_artists"].includes(r.kind) ? " round" : "";
-
-    let about;
-    if (r.kind === "album") {
-        about = [r.source_name && r.source_name !== r.title ? r.source_name : null,
-            count ? `${count} ranked` : "Rated only"];
-    } else if (isArtistKind(r)) {
-        about = [r.source_name && r.source_name !== r.title ? r.source_name : null,
-            count ? `${count} ranked` : null];
-    } else {
-        about = [KIND_LABELS[r.kind], count ? `${count} ranked` : null];
-    }
-    const aboutText = about.filter(Boolean).join(" · ");
-
-    let starsLine = "";
-    if (r.kind === "album" && r.rating != null) {
-        const rating = Number(r.rating);
-        starsLine = `<span class="saved-card-stars">${starsHtml(rating, { size: 14 })}<span>${formatRating(rating)}</span></span>`;
-    } else if (isArtistKind(r) && averages.has(r.source_id)) {
-        const { average, count: rated } = averages.get(r.source_id);
-        starsLine = `<span class="saved-card-stars" title="Average of ${rated} rated album${rated === 1 ? "" : "s"}">${starsHtml(average, { size: 14 })}<span>${formatAverage(average)} avg</span></span>`;
-    }
-
-    card.innerHTML = `
-        <span class="saved-card-cover${round}">
-            ${r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy">` : `<span class="saved-card-placeholder" aria-hidden="true">${esc((r.title || "?").trim().charAt(0).toUpperCase())}</span>`}
-        </span>
-        <span class="saved-card-name">${esc(r.title)}</span>
-        ${aboutText ? `<span class="saved-card-sub">${esc(aboutText)}</span>` : ""}
-        ${starsLine}`;
-    return card;
-}
-
 function renderList() {
     const folder = activeFolder();
     const tab = inTab();
@@ -277,7 +237,7 @@ function renderList() {
     const visible = collapsible && !expanded ? shown.slice(0, COLLAPSED_COUNT) : shown;
     const grid = document.createElement("div");
     grid.className = "saved-grid";
-    visible.forEach(r => grid.appendChild(rankingCard(r)));
+    visible.forEach(r => grid.appendChild(rankingCard(r, { averages })));
     listEl.appendChild(grid);
     if (!collapsible) return;
 

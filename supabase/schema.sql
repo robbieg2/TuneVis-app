@@ -327,3 +327,143 @@ create policy "Users manage their own folder items"
       where f.id = folder_id and f.section = public.ranking_section(r.kind)
     )
   );
+
+
+-- ===========================================================================
+-- Migration (Nov 2026): social — friends, profiles and the shared feed
+-- On an existing database, run just this block (from here to the end of the file)
+-- in the SQL Editor. Modelled on the racing map site's friends.
+--
+-- Who can see what:
+--   * usernames: found by search (social.html) and seen by anyone you have a request
+--     or friendship with; nothing else about an account is exposed;
+--   * rankings: your own, plus your friends' (read only; folders stay private);
+--   * feed posts: your own and your friends'.
+-- ===========================================================================
+
+-- One row per pair of accounts: a request (pending) or a friendship (accepted). Both
+-- need a username (profiles row) first.
+create table public.friendships (
+  id           uuid primary key default gen_random_uuid(),
+  requester    uuid not null default auth.uid()
+               references public.profiles (user_id) on delete cascade,
+  addressee    uuid not null references public.profiles (user_id) on delete cascade,
+  status       text not null default 'pending' check (status in ('pending', 'accepted')),
+  created_at   timestamptz not null default now(),
+  accepted_at  timestamptz,
+  check (requester <> addressee)
+);
+create unique index friendships_pair
+  on public.friendships (least(requester, addressee), greatest(requester, addressee));
+create index friendships_addressee on public.friendships (addressee);
+
+-- A ranking shared to the feed, with an optional caption. The feed shows the ranking
+-- as it is now (edits show up); deleting the ranking removes its posts.
+create table public.ranking_posts (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null default auth.uid()
+              references auth.users (id) on delete cascade,
+  ranking_id  uuid not null references public.rankings (id) on delete cascade,
+  caption     text check (char_length(caption) <= 280),
+  created_at  timestamptz not null default now()
+);
+create index ranking_posts_user_created on public.ranking_posts (user_id, created_at desc);
+create index ranking_posts_ranking on public.ranking_posts (ranking_id);
+
+-- Helpers for the policies (security definer, so a policy on one table can look at
+-- another without recursion). All are about the signed-in user only.
+create function public.is_friend(other uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.friendships f
+    where f.status = 'accepted'
+      and ((f.requester = (select auth.uid()) and f.addressee = other)
+        or (f.addressee = (select auth.uid()) and f.requester = other)));
+$$;
+
+-- Any request or friendship with them (so a pending request can show their name).
+create function public.knows(other uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.friendships f
+    where (f.requester = (select auth.uid()) and f.addressee = other)
+       or (f.addressee = (select auth.uid()) and f.requester = other));
+$$;
+
+-- Usernames starting with what was typed (any case), for Add friends. At least 2
+-- characters, at most 10 results, never yourself. Only the username comes back.
+create function public.search_profiles(p_query text)
+returns table (user_id uuid, username text)
+language sql stable security definer set search_path = '' as $$
+  select p.user_id, p.username from public.profiles p
+  where char_length(trim(p_query)) >= 2
+    and lower(p.username) like replace(replace(replace(lower(trim(p_query)), '\', '\'), '%', '\%'), '_', '\_') || '%'
+    and p.user_id <> (select auth.uid())
+  order by lower(p.username)
+  limit 10;
+$$;
+
+-- A username's owner, matched exactly (any case), for a profile link (profile.html?u=).
+create function public.profile_by_username(p_username text)
+returns table (user_id uuid, username text)
+language sql stable security definer set search_path = '' as $$
+  select p.user_id, p.username from public.profiles p
+  where lower(p.username) = lower(trim(p_username));
+$$;
+
+revoke all on function public.is_friend(uuid) from public, anon;
+revoke all on function public.knows(uuid) from public, anon;
+revoke all on function public.search_profiles(text) from public, anon;
+revoke all on function public.profile_by_username(text) from public, anon;
+grant execute on function public.is_friend(uuid) to authenticated;
+grant execute on function public.knows(uuid) to authenticated;
+grant execute on function public.search_profiles(text) to authenticated;
+grant execute on function public.profile_by_username(text) to authenticated;
+
+alter table public.friendships   enable row level security;
+alter table public.ranking_posts enable row level security;
+
+-- Profiles: anyone you have a request or friendship with can see your username.
+create policy "Profiles visible to friends and requests"
+  on public.profiles for select to authenticated
+  using (public.knows(user_id));
+
+-- Requests: anyone can ask (as themselves); only the person asked can accept; either
+-- side can withdraw, decline or unfriend (delete).
+create policy "Users see their own requests and friendships"
+  on public.friendships for select to authenticated
+  using ((select auth.uid()) in (requester, addressee));
+create policy "Users send requests as themselves"
+  on public.friendships for insert to authenticated
+  with check (requester = (select auth.uid()) and status = 'pending' and accepted_at is null);
+create policy "Users accept requests sent to them"
+  on public.friendships for update to authenticated
+  using (addressee = (select auth.uid()) and status = 'pending')
+  with check (addressee = (select auth.uid()) and status = 'accepted');
+create policy "Either side can remove a request or friendship"
+  on public.friendships for delete to authenticated
+  using ((select auth.uid()) in (requester, addressee));
+
+-- Friends can read each other's rankings (changing them stays owner-only).
+create policy "Friends can see rankings"
+  on public.rankings for select to authenticated
+  using (public.is_friend(user_id));
+
+-- Posts: you post your own rankings only; you and your friends see them; you can
+-- delete your own.
+create policy "Posts visible to their author and friends"
+  on public.ranking_posts for select to authenticated
+  using (user_id = (select auth.uid()) or public.is_friend(user_id));
+create policy "Users share their own rankings"
+  on public.ranking_posts for insert to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and exists (select 1 from public.rankings r
+                where r.id = ranking_id and r.user_id = (select auth.uid()))
+  );
+create policy "Users delete their own posts"
+  on public.ranking_posts for delete to authenticated
+  using (user_id = (select auth.uid()));
+
+grant select, insert, update, delete on public.friendships to authenticated;
+grant select, insert, delete         on public.ranking_posts to authenticated;

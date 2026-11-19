@@ -5,7 +5,9 @@
 import { esc } from "./auth.js";
 import { getUser } from "./supabase.js";
 import { deleteRanking, sectionOf } from "./saved-rankings.js";
-import { openFoldersDialog } from "./folder-dialog.js";
+import { openFoldersDialog, openModal } from "./folder-dialog.js";
+import { getMyUsername } from "./profile.js";
+import { myPostsOf, shareRanking, rankingOwner, CAPTION_MAX } from "./social-data.js";
 
 const viewEl = document.getElementById("rank-view");
 const editEl = document.getElementById("rank-edit");
@@ -14,6 +16,7 @@ const metaEl = document.getElementById("rank-view-meta");
 const listEl = document.getElementById("rank-view-list");
 
 const FOLDER_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.76a2 2 0 0 1 1.42.59L12.1 6H18.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>`;
+const SHARE_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.4a3 3 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7c0 .3 0 .5.1.8L8.4 11.2a3 3 0 1 0 0 4.6l6.7 3.4A3 3 0 1 0 18 16z"/></svg>`;
 const TRASH_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/></svg>`;
 
 // ── Add to folder / Delete, for a ranking saved to the signed-in user's account ──
@@ -23,6 +26,7 @@ const manageEl = document.createElement("div");
 manageEl.className = "rank-view-manage";
 manageEl.hidden = true;
 manageEl.innerHTML = `
+    <button type="button" class="rank-share-btn">${SHARE_ICON}Share to feed</button>
     <button type="button" class="rank-folder-btn">${FOLDER_ICON}Add to folder</button>
     <button type="button" class="rank-delete-btn danger">${TRASH_ICON}Delete ranking</button>`;
 viewEl?.appendChild(manageEl);
@@ -37,6 +41,97 @@ export async function setSavedRanking(ranking) {
     const user = await getUser().catch(() => null);
     if (check !== manageCheck) return;
     manageEl.hidden = !user;
+}
+
+// Share to feed: an optional caption, then a post your friends see in their feed.
+manageEl.querySelector(".rank-share-btn").addEventListener("click", () => {
+    if (savedRanking) openShareDialog(savedRanking);
+});
+
+async function openShareDialog(ranking) {
+    const { modal, close } = openModal(`
+        <h2>Share to your feed</h2>
+        <p class="library-modal-sub">${esc(ranking.title)}</p>
+        <div class="share-body"><p class="library-modal-empty">Loading…</p></div>`);
+    const body = modal.querySelector(".share-body");
+    let username, posts;
+    try {
+        [username, posts] = await Promise.all([getMyUsername(), myPostsOf(ranking.id)]);
+    } catch (err) {
+        console.error(err);
+        body.innerHTML = `<p class="library-modal-empty">Sharing isn't available just now.</p>`;
+        return;
+    }
+    if (posts === null) { body.innerHTML = `<p class="library-modal-empty">Sharing isn't switched on yet.</p>`; return; }
+    if (!username) {
+        body.innerHTML = `<p class="library-modal-empty">Choose a username first, so your friends know who shared it.</p>
+            <a href="account.html#username-form"><button type="button">Choose a username</button></a>`;
+        return;
+    }
+    const last = posts[0];
+    body.innerHTML = `
+        ${last ? `<p class="share-note">You last shared this on ${esc(new Date(last.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }))}. Sharing again posts it to the top of the feed.</p>` : ""}
+        <form class="auth-form share-form" novalidate>
+            <label class="auth-field">
+                <span>Say something about it (optional)</span>
+                <textarea name="caption" rows="3" maxlength="${CAPTION_MAX}" placeholder="e.g. Finally ranked this one!"></textarea>
+            </label>
+            <p class="share-count"><span>0</span> / ${CAPTION_MAX}</p>
+            <p class="username-status error" aria-live="polite"></p>
+            <button type="submit">Share</button>
+        </form>`;
+    const form = body.querySelector("form");
+    const counter = body.querySelector(".share-count span");
+    form.elements.caption.addEventListener("input", () => { counter.textContent = form.elements.caption.value.length; });
+    form.addEventListener("submit", async e => {
+        e.preventDefault();
+        const btn = form.querySelector("button");
+        btn.disabled = true;
+        try {
+            await shareRanking(ranking.id, form.elements.caption.value);
+            body.innerHTML = `<p class="share-done">Shared to your feed &#10003;</p>
+                <p><a class="social-link" href="social.html">See the feed &#8250;</a></p>`;
+        } catch (err) {
+            console.error(err);
+            btn.disabled = false;
+            form.querySelector(".username-status").textContent = "That couldn't be shared just now. Please try again.";
+        }
+    });
+    form.elements.caption.focus();
+    return close;
+}
+
+// ── A friend's ranking (from=<id>): read only ─────────────────────────
+// Hides Edit and the owner's buttons, and says whose it is, with a link to start your
+// own ranking of the same album / artist (freshHref).
+let friendCheck = 0;
+export async function setFriendRanking(rankingId, freshHref) {
+    const check = ++friendCheck;
+    document.getElementById("rank-edit-btn")?.setAttribute("hidden", "");
+    manageEl.hidden = true;
+    savedRanking = null;
+    let byline = viewEl.querySelector(".rank-view-byline");
+    if (!byline) {
+        byline = document.createElement("p");
+        byline.className = "rank-view-byline";
+        viewEl.prepend(byline);
+    }
+    const actions = viewEl.querySelector(".rank-view-actions");
+    if (actions && !actions.querySelector(".rank-own-btn")) {
+        const own = document.createElement("a");
+        own.className = "rank-own-btn";
+        own.href = freshHref;
+        own.innerHTML = `<button type="button">Rank it yourself</button>`;
+        actions.prepend(own);
+    }
+    byline.textContent = "A friend's ranking";
+    const owner = await rankingOwner(rankingId).catch(() => null);
+    if (check !== friendCheck) return;
+    if (owner?.username) {
+        byline.innerHTML = `Ranked by <a href="profile.html?u=${encodeURIComponent(owner.username)}">@${esc(owner.username)}</a>`;
+    } else if (!owner) {
+        byline.textContent = "Shared ranking";
+    }
 }
 
 manageEl.querySelector(".rank-folder-btn").addEventListener("click", () => {

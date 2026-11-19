@@ -8,7 +8,7 @@ import { getSpotifyToken, esc } from "./auth.js";
 import { buildRankingText, buildRankingImage, downloadCanvas, copyText } from "./rank-share.js";
 import { initSaveButton, KIND_LABELS, listRankings, rankingUrl } from "./saved-rankings.js";
 import { createStarRating, parseRating, starsText, starsHtml, formatRating } from "./star-rating.js";
-import { setViewMode, renderRankView, setSavedRanking } from "./rank-view.js";
+import { setViewMode, renderRankView, setSavedRanking, setFriendRanking } from "./rank-view.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
 import { artistAverages, rememberAlbumArtists, formatAverage } from "./artist-ratings.js";
 
@@ -49,6 +49,7 @@ let rankSize = 5;
 let rankedIds = [];          // ordered ids, length <= rankSize
 let listName = "";           // user-editable title for this ranking, used in exports
 let savedId = null;          // the saved ranking (account) this page is editing, if any
+let friendId = null;         // a friend's ranking (from=<id>), shown read-only
 let saveCtl = { refresh() {}, reset() {}, isDirty: () => false, save: async () => true };
 let rating = null;           // album only: overall star rating, 0.5–5 in half steps
 let viewing = false;         // showing a saved ranking as a finished list
@@ -78,6 +79,7 @@ function getParams() {
         order: p.get("order") ? p.get("order").split(",").filter(Boolean) : [],
         name: p.get("name") || null,
         saved: p.get("saved") || null,
+        from: p.get("from") || null,
         rating: parseRating(p.get("rating")),
         edit: p.get("edit") === "1",
     };
@@ -93,6 +95,7 @@ function rankingParams() {
     if (listName) p.set("name", listName);
     if (meta.type === "album" && rating) p.set("rating", String(rating));
     if (savedId) p.set("saved", savedId);
+    if (friendId) p.set("from", friendId);
     // A saved ranking opens as the finished list unless the URL says it's being edited.
     if (savedId && !viewing) p.set("edit", "1");
     return p;
@@ -669,6 +672,10 @@ function viewItems() {
 
 // Tells the finished-list view which saved ranking it shows (for Add to folder / Delete).
 function syncSavedRanking() {
+    if (friendId) {
+        setFriendRanking(friendId, `rank.html?type=${meta.type}&id=${encodeURIComponent(meta.id)}${isAlbumsList() ? "&list=albums" : ""}`);
+        return;
+    }
     setSavedRanking(savedId ? { id: savedId, kind: kind(), title: listName || defaultListName() } : null);
 }
 
@@ -1080,7 +1087,9 @@ async function init() {
         leftPanelTracks = allTracks.slice();
         rating = type === "album" ? ratingParam : null;
         // A saved ranking opens as the finished list, unless the URL says it's being edited.
-        viewing = Boolean(saved) && !params.edit;
+        // A friend's ranking (from=<id>) only ever shows as the finished list.
+        friendId = saved ? null : params.from;
+        viewing = (Boolean(saved) && !params.edit) || Boolean(friendId);
 
         if (type === "artist" && params.list === "albums") {
             // Start the Top tracks list fresh, then open Albums with the URL's ranking.
