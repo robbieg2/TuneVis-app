@@ -467,3 +467,29 @@ create policy "Users delete their own posts"
 
 grant select, insert, update, delete on public.friendships to authenticated;
 grant select, insert, delete         on public.ranking_posts to authenticated;
+
+
+-- ===========================================================================
+-- Migration (Nov 2026): public folders
+-- On an existing database, run just this block (from here to the end of the file)
+-- in the SQL Editor. Needs the social migration above.
+--
+-- A folder can be made visible to friends (is_public). Friends then see it on your
+-- profile, with the rankings in it (they can already see your rankings). Folders are
+-- private unless you choose otherwise, and existing ones stay private.
+-- ===========================================================================
+
+alter table public.ranking_folders add column is_public boolean not null default false;
+
+create policy "Friends see public folders"
+  on public.ranking_folders for select to authenticated
+  using (is_public and public.is_friend(user_id));
+
+-- The subquery runs under the friend's own row-level security, so it only finds
+-- folders they're allowed to see (their own, or a friend's public one).
+create policy "Friends see what's in public folders"
+  on public.ranking_folder_items for select to authenticated
+  using (exists (
+    select 1 from public.ranking_folders f
+    where f.id = folder_id and f.is_public and f.user_id <> (select auth.uid())
+  ));

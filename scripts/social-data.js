@@ -198,3 +198,26 @@ export async function deletePost(postId) {
     const { error } = await supabase.from("ranking_posts").delete().eq("id", postId);
     if (error) throw error;
 }
+
+// ── Public folders ─────────────────────────────────────────────────────
+// Someone's folders that friends can see (yours too, on your own profile), with what's
+// in them: { folders: [{ id, name, section }], items: [{ folder_id, ranking_id }] }.
+// Empty before the public-folders migration.
+export async function publicFoldersOf(userId) {
+    const { supabase } = await client();
+    const none = { folders: [], items: [] };
+    if (!supabase) return none;
+    const { data: folders, error } = await supabase.from("ranking_folders")
+        .select("id, name, section, created_at")
+        .eq("user_id", userId).eq("is_public", true)
+        .order("created_at", { ascending: true });
+    if (error) {
+        if (["42703", "PGRST204", "42P01", "PGRST205"].includes(error.code)) return none;
+        throw error;
+    }
+    if (!folders?.length) return none;
+    const { data: items, error: iError } = await supabase.from("ranking_folder_items")
+        .select("folder_id, ranking_id").in("folder_id", folders.map(f => f.id));
+    if (iError) throw iError;
+    return { folders, items: items || [] };
+}
