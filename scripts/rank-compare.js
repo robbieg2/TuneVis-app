@@ -10,11 +10,25 @@
 import { esc } from "./auth.js";
 import { listRankings, rankingUrl } from "./saved-rankings.js";
 import { starsHtml, formatRating } from "./star-rating.js";
+import { sameSubject, albumKey } from "./album-editions.js";
 
 let setUpFor = null;
 
-// The same thing ranked: same kind, and the same album / artist (favourites: same kind).
-const sameSubject = (a, b) => a.kind === b.kind && (a.source_id ?? null) === (b.source_id ?? null);
+// Opened from "See friends' rankings" (compare=1): go straight into compare mode. Read
+// now, before the page tidies its URL.
+const autoCompare = new URLSearchParams(window.location.search).get("compare") === "1";
+
+// Two editions of an album have different track ids, so their lists are compared by
+// track name instead (albumKey also drops "- 2011 Remaster" and the like).
+function byTrackName(r) {
+    const key = item => `name:${albumKey(item?.name)}`;
+    const itemOf = id => (r.items || []).find(i => i.id === id);
+    return {
+        ...r,
+        item_ids: (r.item_ids || []).map(id => key(itemOf(id) || { name: id })),
+        items: (r.items || []).map(i => ({ ...i, id: key(i) })),
+    };
+}
 
 // 0–100: for every item in either list, full marks when both put it in the same place,
 // less the further apart, nothing when only one of you ranked it.
@@ -86,8 +100,17 @@ function columnHtml(r, other, { heading, whoOther, link }) {
 export async function setupCompare(viewEl, theirs, username) {
     if (!viewEl || !theirs || setUpFor === theirs.id) return;
     setUpFor = theirs.id;
-    const mine = ((await listRankings().catch(() => null)) || []).find(r => sameSubject(r, theirs));
+    let mine = null;
+    for (const r of (await listRankings().catch(() => null)) || []) {   // newest first
+        if (r.kind === theirs.kind && await sameSubject(r, theirs)) { mine = r; break; }
+    }
     if (!mine || setUpFor !== theirs.id) return;
+    const mineLink = rankingUrl(mine);   // before any re-keying below
+    // Different editions of one album: line the tracks up by name.
+    if (mine.kind === "album" && mine.source_id !== theirs.source_id) {
+        mine = byTrackName(mine);
+        theirs = byTrackName(theirs);
+    }
 
     const listEl = viewEl.querySelector("#rank-view-list");
     const actions = viewEl.querySelector(".rank-view-actions");
@@ -111,14 +134,14 @@ export async function setupCompare(viewEl, theirs, username) {
         </div>
         <div class="compare-cols" data-show="theirs">
             <div class="compare-col theirs">${columnHtml(theirs, mine, { heading: who, whoOther: "You" })}</div>
-            <div class="compare-col mine">${columnHtml(mine, theirs, { heading: "You", whoOther: `@${username || "friend"}`, link: rankingUrl(mine) })}</div>
+            <div class="compare-col mine">${columnHtml(mine, theirs, { heading: "You", whoOther: `@${username || "friend"}`, link: mineLink })}</div>
         </div>`;
     listEl.after(panel);
 
     // You already have one: "Rank it yourself" becomes a link to yours.
     const own = actions.querySelector(".rank-own-btn");
     if (own) {
-        own.href = rankingUrl(mine);
+        own.href = mineLink;
         const ownBtn = own.querySelector("button");
         if (ownBtn) ownBtn.textContent = "Open your ranking";
     }
@@ -137,6 +160,8 @@ export async function setupCompare(viewEl, theirs, username) {
         viewEl.classList.toggle("comparing", on);   // wider, so the lists fit side by side
         if (on) panel.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+
+    if (autoCompare) btn.click();
 
     // Phones: switch between the two lists.
     const cols = panel.querySelector(".compare-cols");

@@ -6,6 +6,7 @@
 // Before the social migration has been run the tables don't exist; every loader then
 // reports { available: false } so the pages can say so instead of failing.
 import { getSupabase, getUser } from "./supabase.js";
+import { sameSubject } from "./album-editions.js";
 
 const RANKING_COLUMNS = "id, user_id, kind, source_id, source_name, genre, title, size, item_ids, items, image, updated_at, rating";
 const CAPTION_MAX = 280;
@@ -281,4 +282,31 @@ export async function publicFoldersOf(userId) {
         .select("folder_id, ranking_id").in("folder_id", folders.map(f => f.id));
     if (iError) throw iError;
     return { folders, items: items || [] };
+}
+
+// ── Friends' rankings of the same thing ────────────────────────────────
+// Your friends' rankings of the same album / artist as this one (any edition of an
+// album; for custom rankings, the same kind), newest per friend first, each with the
+// friend's username: [{ ranking, username }]. Row-level security only returns friends'.
+export async function friendsRankingsOf(ranking) {
+    const { supabase, user } = await client();
+    if (!supabase || !user || !ranking?.kind) return [];
+    const { data, error } = await selectRankings(q => {
+        let query = q.eq("kind", ranking.kind).neq("user_id", user.id)
+            .order("updated_at", { ascending: false }).limit(300);
+        // Albums are matched by edition too (different ids), so only they need all.
+        if (ranking.kind !== "album" && ranking.source_id) query = query.eq("source_id", ranking.source_id);
+        return query;
+    });
+    if (error) { console.warn("[friends] rankings couldn't be loaded:", error); return []; }
+    const newestPerFriend = new Map();
+    for (const r of data || []) {
+        if (newestPerFriend.has(r.user_id)) continue;
+        if (await sameSubject(r, ranking)) newestPerFriend.set(r.user_id, r);
+    }
+    if (!newestPerFriend.size) return [];
+    const names = await usernames([...newestPerFriend.keys()]).catch(() => new Map());
+    return [...newestPerFriend.values()]
+        .map(r => ({ ranking: r, username: names.get(r.user_id) || "friend" }))
+        .sort((a, b) => a.username.localeCompare(b.username, undefined, { sensitivity: "base" }));
 }

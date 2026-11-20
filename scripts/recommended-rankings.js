@@ -14,6 +14,7 @@ import { onUserChange } from "./supabase.js";
 import { listRankings } from "./saved-rankings.js";
 import { albumArtists, artistAverages } from "./artist-ratings.js";
 import { loopCarousel } from "./loop-carousel.js";
+import { albumKey } from "./album-editions.js";
 
 const LASTFM_API_KEY = "2e23f6b1b4b3345ab5e33a788a072303";
 const CACHE_KEY = "tunevis_recs_cache";
@@ -91,12 +92,16 @@ const albumUrl = id => `rank.html?type=album&id=${encodeURIComponent(id)}`;
 
 async function buildRecommendations(rankings) {
     const rankedAlbums = new Set(rankings.filter(r => r.kind === "album").map(r => r.source_id));
+    // By name too, so another edition of an album you've ranked (deluxe vs standard)
+    // isn't suggested.
+    const rankedAlbumNames = new Set(rankings.filter(r => r.kind === "album").map(r => albumKey(r.source_name || r.title)));
     const rankedArtists = new Set(rankings.filter(r => r.kind === "artist" || r.kind === "artist_albums").map(r => r.source_id));
     const cards = [];
     const usedAlbums = new Set(), usedArtists = new Set();
     let group = "missingAlbum";   // which kind of suggestion the add* calls are making
     const addAlbum = card => {
         if (!card.id || rankedAlbums.has(card.id) || usedAlbums.has(card.id)) return false;
+        if (card.name && rankedAlbumNames.has(albumKey(card.name))) return false;
         usedAlbums.add(card.id);
         cards.push({ ...card, group, href: albumUrl(card.id), round: false });
         return true;

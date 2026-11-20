@@ -4601,3 +4601,60 @@ details.faq p { padding: 0 16px 14px; margin: 0; }
 .picker-sub { font-size: 12px; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .picker-done { margin-top: 10px; flex: 0 0 auto; }
+
+/* "See friends' rankings" on your own saved ranking (rank-view.js). */
+.rank-friends-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.rank-friends-btn[hidden] { display: none; }
+
+.rank-friends-btn svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+
+.rank-friends-count {
+    min-width: 20px;
+    padding: 1px 6px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: #1db954;
+    color: #fff;
+    font-size: 12px;
+}
+
+.rank-view-actions:has(.rank-friends-btn:not([hidden])) { flex-wrap: wrap; }
+
+.friend-picks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.friend-pick {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: inherit;
+    text-decoration: none;
+}
+
+.friend-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.friend-pick-name { font-weight: 700; }
+.friend-pick-sub { font-size: 12px; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-pick-stars { display: inline-flex; align-items: center; gap: 6px; color: #ffc94d; font-size: 12px; font-weight: 600; }
+.friend-pick-go { flex-shrink: 0; color: #1db954; font-weight: 600; font-size: 13px; }
+
+@media (hover: hover) {
+    .friend-pick:hover { border-color: rgba(29, 185, 84, 0.6); background: rgba(29, 185, 84, 0.08); }
+}
+
+@media (max-width: 767px) {
+    .rank-view-actions .rank-friends-btn { flex: 1 0 100%; }
+}

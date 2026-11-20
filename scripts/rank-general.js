@@ -170,7 +170,7 @@ function syncSavedRanking() {
         setFriendRanking(friendId, `rank-general.html?mode=${mode}&genre=${encodeURIComponent(genre)}`);
         return;
     }
-    setSavedRanking(savedId ? { id: savedId, kind: (mode === "artist" ? "fav_artists" : "fav_tracks"), title: listName || defaultListName() } : null);
+    setSavedRanking(savedId ? { id: savedId, kind: (mode === "artist" ? "fav_artists" : "fav_tracks"), title: listName || defaultListName(), source_id: null, source_name: null } : null);
 }
 
 function renderView() {

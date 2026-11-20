@@ -7,8 +7,10 @@ import { getUser } from "./supabase.js";
 import { deleteRanking, sectionOf, listRankings, rankingUrl } from "./saved-rankings.js";
 import { openFoldersDialog, openModal } from "./folder-dialog.js";
 import { getMyUsername } from "./profile.js";
-import { myPostsOf, shareRanking, rankingOwner, rankingsOf, CAPTION_MAX } from "./social-data.js";
+import { myPostsOf, shareRanking, rankingOwner, rankingsOf, friendsRankingsOf, CAPTION_MAX } from "./social-data.js";
+import { starsHtml, formatRating } from "./star-rating.js";
 import { setupCompare } from "./rank-compare.js";
+import { avatarHtml } from "./social-ui.js";
 
 const viewEl = document.getElementById("rank-view");
 const editEl = document.getElementById("rank-edit");
@@ -38,11 +40,58 @@ viewEl?.appendChild(manageEl);
 export async function setSavedRanking(ranking) {
     savedRanking = ranking?.id ? ranking : null;
     const check = ++manageCheck;
-    if (!savedRanking) { manageEl.hidden = true; return; }
+    if (!savedRanking) { manageEl.hidden = true; friendsBtn.hidden = true; return; }
     const user = await getUser().catch(() => null);
     if (check !== manageCheck) return;
     manageEl.hidden = !user;
+    if (user) refreshFriendsButton(savedRanking);
 }
+
+// ── See friends' rankings ──────────────────────────────────────────────
+// On your own saved ranking: when friends have ranked the same album / artist (any
+// edition), a button lists them; choosing one opens theirs in compare mode.
+const PEOPLE_ICON = `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7" cy="6.5" r="3.2"/><circle cx="14.2" cy="7.5" r="2.6"/><path d="M1 17c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6z"/><path d="M13.6 11.6c3 0 5.4 2 5.4 5.1h-4.6c0-2-.3-3.6-.8-5.1z"/></svg>`;
+const friendsBtn = document.createElement("button");
+friendsBtn.type = "button";
+friendsBtn.className = "secondary-btn rank-friends-btn";
+friendsBtn.hidden = true;
+viewEl?.querySelector(".rank-view-actions")?.appendChild(friendsBtn);
+let friendsFor = null;      // which ranking the list below is for
+let friendsList = [];
+
+async function refreshFriendsButton(ranking) {
+    const key = `${ranking.id}|${ranking.kind}`;
+    if (friendsFor === key) return;
+    friendsFor = key;
+    friendsBtn.hidden = true;
+    const found = await friendsRankingsOf(ranking).catch(() => []);
+    if (friendsFor !== key) return;
+    friendsList = found;
+    friendsBtn.hidden = !found.length;
+    friendsBtn.innerHTML = `${PEOPLE_ICON}See friends' rankings <span class="rank-friends-count">${found.length}</span>`;
+}
+
+friendsBtn.addEventListener("click", () => {
+    const rows = friendsList.map(({ ranking: r, username }) => {
+        const stars = r.kind === "album" && r.rating != null
+            ? `<span class="friend-pick-stars">${starsHtml(Number(r.rating), { size: 13 })}<span>${formatRating(Number(r.rating))}</span></span>`
+            : "";
+        const count = r.item_ids?.length || 0;
+        return `<a class="friend-pick" href="${esc(rankingUrl(r, { friend: true }))}&compare=1">
+            ${avatarHtml(username, 38)}
+            <span class="friend-pick-text">
+                <span class="friend-pick-name">@${esc(username)}</span>
+                <span class="friend-pick-sub">${esc(r.title)}${count ? ` · ${count} ranked` : ""}</span>
+                ${stars}
+            </span>
+            <span class="friend-pick-go">Compare &#8250;</span>
+        </a>`;
+    }).join("");
+    openModal(`
+        <h2>Friends' rankings</h2>
+        <p class="library-modal-sub">${esc(savedRanking?.title || "")}</p>
+        <div class="friend-picks">${rows}</div>`);
+});
 
 // Share to feed: an optional caption, then a post your friends see in their feed.
 manageEl.querySelector(".rank-share-btn").addEventListener("click", () => {

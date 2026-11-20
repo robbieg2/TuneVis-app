@@ -11,6 +11,7 @@ import { createStarRating, parseRating, starsText, starsHtml, formatRating } fro
 import { setViewMode, renderRankView, setSavedRanking, setFriendRanking, showArtistLists } from "./rank-view.js";
 import { openInSpotifyHtml } from "./spotify-open.js";
 import { artistAverages, rememberAlbumArtists, formatAverage } from "./artist-ratings.js";
+import { albumKey } from "./album-editions.js";
 
 const backBtn = document.getElementById("back-btn");
 const listNameInput = document.getElementById("list-name-input");
@@ -301,25 +302,11 @@ function albumItem(al) {
     };
 }
 
-// Words that mark another edition of the same record. Deliberately not "live"
-// (a live album is its own record, e.g. "W.L. (Live from Stirling Castle)") or
-// "version" (re-recordings like "(Taylor's Version)" are separate albums).
-const EDITION_WORDS = "deluxe|edition|remaster|remastered|expanded|anniversary|bonus|international";
-
 // Bundles that aren't really albums or EPs: remix packs, karaoke and instrumental
 // versions, sped-up / slowed edits, music-video audio.
 const NOT_A_RECORD = /\b(remix|remixes|mixes|karaoke|instrumentals?|sped up|slowed|music video)\b/i;
 
-// "W.L. (Deluxe)", "Millennials (Deluxe Edition)", "Album - 2011 Remaster" all share
-// the key of the standard edition ("w.l.", "millennials", "album").
-function albumKey(name) {
-    return String(name).toLowerCase()
-        .replace(new RegExp(`\\s*[([][^)\\]]*\\b(${EDITION_WORDS})\\b[^)\\]]*[)\\]]`, "g"), "")
-        .replace(new RegExp(`\\s+-\\s+[^-]*\\b(${EDITION_WORDS})\\b.*$`), "")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
+// Editions of one record share albumKey() (album-editions.js).
 // Of several editions of one record, show the standard one if Spotify has it,
 // otherwise the earliest (e.g. only "W.L. (Deluxe)" exists, so that's shown).
 function pickEdition(editions) {
@@ -348,11 +335,25 @@ async function loadArtistAlbums(token) {
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(al);
     }
+    // If you've ranked one edition of a record on its own (say the deluxe), the list
+    // shows that edition, so the two rankings match. Every edition's id is kept
+    // (editionIds) so saved lists and links made from another edition still line up.
+    await loadSavedAlbumRankings();
     return [...groups.values()]
-        .map(pickEdition)
-        .map(albumItem)
+        .map(editions => {
+            const ranked = editions
+                .map(al => ({ al, r: savedAlbumRankings?.get(al.id) }))
+                .filter(x => x.r)
+                .sort((a, b) => String(b.r.updated_at).localeCompare(String(a.r.updated_at)));
+            const item = albumItem(ranked.length ? ranked[0].al : pickEdition(editions));
+            item.editionIds = editions.map(al => al.id);
+            return item;
+        })
         .sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
 }
+
+// The id this list uses for a record, given any of its editions' ids (or null).
+const listIdFor = id => allTracks.find(t => t.id === id || t.editionIds?.includes(id))?.id || null;
 
 // ── Rendering ──────────────────────────────────────────────────────────
 // The browser tab title names what's being ranked, e.g. "Abbey Road · Album Ranking".
@@ -642,7 +643,11 @@ function loadSavedAlbumRankings() {
 }
 
 function albumLink(album) {
-    const saved = savedAlbumRankings?.get(album.id);
+    // Your newest ranking of any edition of this record.
+    const saved = (album.editionIds || [album.id])
+        .map(id => savedAlbumRankings?.get(id))
+        .filter(Boolean)
+        .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0];
     if (saved) {
         const rating = saved.rating != null ? Number(saved.rating) : null;
         const count = saved.item_ids?.length || 0;
@@ -676,7 +681,7 @@ function syncSavedRanking() {
         setFriendRanking(friendId, `rank.html?type=${meta.type}&id=${encodeURIComponent(meta.id)}${isAlbumsList() ? "&list=albums" : ""}`);
         return;
     }
-    setSavedRanking(savedId ? { id: savedId, kind: kind(), title: listName || defaultListName() } : null);
+    setSavedRanking(savedId ? { id: savedId, kind: kind(), title: listName || defaultListName(), source_id: meta.id, source_name: meta.name } : null);
 }
 
 function renderView() {
@@ -761,8 +766,11 @@ async function switchList(next, { restore = null } = {}) {
         rankSize = restore?.size && sizeOptions.some(o => o.value === restore.size) ? restore.size : sizeOptions[0].value;
         rankedIds = [];
         if (restore?.order?.length) {
-            await addMissingAlbums(cachedToken, restore.order.slice(0, rankSize));
-            rankedIds = restore.order.filter(id => allTracks.some(t => t.id === id)).slice(0, rankSize);
+            // A saved list may name another edition of a record than the one shown now:
+            // map each id to the list's edition, so nothing appears twice.
+            const order = restore.order.slice(0, rankSize);
+            await addMissingAlbums(cachedToken, order.filter(id => !listIdFor(id)));
+            rankedIds = [...new Set(order.map(listIdFor).filter(Boolean))].slice(0, rankSize);
         }
         listName = restore?.name || defaultListName();
         savedId = restore?.saved || null;
